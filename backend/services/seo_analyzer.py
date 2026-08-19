@@ -455,17 +455,34 @@ async def analyze_content_item(item: dict, page_url: str, job_id: str) -> list[d
         )
         if action is None:
             continue
-        await db.action_items.insert_one(action)
-        actions.append(action)
+            
+        source_url = item.get("source_url", "")
+        if source_url:
+            # Deduplicate sitewide elements (like logos) so they are only flagged once per job
+            res = await db.action_items.update_one(
+                {"job_id": job_id, "source_url": source_url, "issue_key": check["issue_key"]},
+                {"$setOnInsert": action},
+                upsert=True
+            )
+            if res.upserted_id:
+                action["_id"] = res.upserted_id
+                actions.append(action)
+        else:
+            res = await db.action_items.insert_one(action)
+            action["_id"] = res.inserted_id
+            actions.append(action)
     return actions
 
 
 async def analyze_pages(job_id: str) -> dict:
     """Post-crawl enrichment: page-level actions + extraction facts + learning + caps."""
+    from backend.services.job_cancel import check_cancelled
+
     db = get_db()
     job = await db.analysis_jobs.find_one({"_id": job_id})
     domain = (job or {}).get("url", "").split("//")[-1].split("/")[0]
 
+    await check_cancelled(job_id)
     pages = await db.pages.find({"job_id": job_id}, {"html_mobile": 0}).to_list(length=None)
     if not pages:
         return {"status": "error", "message": "No pages for this job"}

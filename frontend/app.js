@@ -166,23 +166,25 @@ document.querySelectorAll(".tab").forEach(tab => {
       if (currentTab === "schedules") loadSchedules();
       if (currentTab === "logs") loadLogs();
       if (currentTab === "settings") loadSettings();
-    } else if (["sites", "schedules", "logs", "settings"].includes(currentTab)) {
+    } else if (["sites", "schedules", "logs", "settings", "sandbox-comparison"].includes(currentTab)) {
       if (currentTab === "sites") loadSites();
       if (currentTab === "schedules") loadSchedules();
       if (currentTab === "logs") loadLogs();
       if (currentTab === "settings") loadSettings();
+      if (currentTab === "sandbox-comparison") loadSandboxComparison();
     }
   });
 });
 
 // Dashboard rails: context, quick nav, activity feed, docked chat
 const RAIL_TAB_LABELS = {
-  sites: "Sites", overview: "Overview", pages: "Pages", content: "Content",
+  "sandbox-comparison": "Comparison", sites: "Sites", overview: "Overview", pages: "Pages", content: "Content",
   links: "Links", actions: "SEO Actions", report: "Report", "seo-insights": "SEO Insights",
   competitors: "Competitors", quality: "Quality", schedules: "Schedules",
   logs: "Alerts", settings: "Settings",
 };
 const TAB_GUIDES = {
+  "sandbox-comparison": "Baseline vs Post-Apply visual snapshot.",
   overview: "Site-level health: pages, content, actions, user flows, the execution summary and deltas vs previous analyses.",
   sites: "Every analyzed site with health grades. Select two or more and compare them side by side.",
   pages: "All crawled pages with search, type filter and sorting.",
@@ -297,30 +299,10 @@ function setDashboardVisible(visible) {
   if (!grid) return;
   grid.classList.toggle("hidden", !visible);
   document.body.classList.toggle("no-dashboard", !visible);
-  applyRailMode();
 }
 
-function applyRailMode() {
-  const wide = window.matchMedia("(min-width: 1280px)").matches && !document.body.classList.contains("no-dashboard");
-  document.body.classList.toggle("app-wide", wide);
-  const chat = document.getElementById("chat-widget");
-  if (!chat) return;
-  const dock = document.getElementById("chat-dock");
-  const panel = document.getElementById("chat-panel");
-  if (wide && dock && chat.parentElement !== dock) {
-    dock.appendChild(chat);
-    if (panel && !chatUserClosed) panel.classList.remove("hidden");
-  } else if (!wide) {
-    if (chat.parentElement !== document.body) document.body.appendChild(chat);
-    if (panel && document.body.classList.contains("no-dashboard")) panel.classList.add("hidden");
-  }
-}
 
 buildRailNav();
-applyRailMode();
-const railModeQuery = window.matchMedia("(min-width: 1280px)");
-if (railModeQuery.addEventListener) railModeQuery.addEventListener("change", applyRailMode);
-else railModeQuery.addListener(applyRailMode);
 
 document.getElementById("rail-links")?.addEventListener("click", e => {
   const btn = e.target.closest("button[data-go]");
@@ -608,6 +590,21 @@ async function pollJob(jobId) {
     statusBadge.className = `status-badge status-${job.status}`;
     const progressPercent = document.getElementById("progress-percent");
     if (progressPercent) progressPercent.textContent = `${job.progress || 0}%`;
+    
+    const stopBtn = document.getElementById("stop-analysis-btn");
+    const retryBtn = document.getElementById("retry-analysis-btn");
+    
+    if (job.status === "failed") {
+      if (stopBtn) stopBtn.classList.add("hidden");
+      if (retryBtn) {
+        retryBtn.classList.remove("hidden");
+        retryBtn.onclick = () => retryAnalysis(jobId);
+      }
+    } else {
+      if (stopBtn && job.status !== "completed" && job.status !== "cancelled") stopBtn.classList.remove("hidden");
+      if (retryBtn) retryBtn.classList.add("hidden");
+    }
+    
     if (job.status === "running" && /^Crawled /.test(job.progress_message || "")) {
       progressTitle.textContent = "Crawling...";
     } else if (job.status === "running") {
@@ -720,10 +717,27 @@ async function showResults(jobId, opts = {}) {
   loadSiteHealth(jobId);
   loadTracking(jobId);
   loadTrends(jobId);
+  
+  if (summary) {
+    document.getElementById('tab-btn-sandbox-comparison').style.display = 'block';
+    const railBtn = document.querySelector('.rail-nav-btn[data-tab="sandbox-comparison"]');
+    if (railBtn) railBtn.style.display = 'flex';
+    
+    // We pass the whole job summary to the tab populator so it can setup sitewide or page-level
+    populateComparisonTab(jobId, summary);
+  } else {
+    document.getElementById('tab-btn-sandbox-comparison').style.display = 'none';
+    const railBtn = document.querySelector('.rail-nav-btn[data-tab="sandbox-comparison"]');
+    if (railBtn) railBtn.style.display = 'none';
+  }
 
   // Switch to overview unless restoring a specific tab from the URL
   if (!opts.preserveTab) {
-    document.querySelector('.tab[data-tab="overview"]').click();
+    if (summary.is_single_page_comparison) {
+      document.querySelector('.tab[data-tab="sandbox-comparison"]').click();
+    } else {
+      document.querySelector('.tab[data-tab="overview"]').click();
+    }
   }
 }
 
@@ -1402,7 +1416,7 @@ document.getElementById("check-links-btn").addEventListener("click", async (e) =
 
 
 let actionsOffset = 0;
-const ACTIONS_PAGE = 200;
+const ACTIONS_PAGE = 50;
 
 function evidenceHtml(value) {
   if (Array.isArray(value)) {
@@ -1527,7 +1541,7 @@ async function loadActions(jobId, { reset } = {}) {
 
   const issueCounts = s.by_issue || {};
   const GROUP_PREVIEW = 8;
-  let html = "";
+  let html = "<div class='accordion'>";
   let gi = 0;
   for (const [gkey, items] of groups) {
     const [type, issueKey] = gkey.split("|");
@@ -1545,20 +1559,28 @@ async function loadActions(jobId, { reset } = {}) {
          <button id="group-more-${gi}" class="btn-secondary" style="margin:6px 0 2px" onclick="toggleGroupExtra(${gi})">Show all ${extra.length} more</button>`
       : "";
     html += `
-      <details class="action-group" open data-group="${escapeHtml(gkey)}">
-        <summary class="action-group-header">
-          <span class="action-type">${escapeHtml(type)}</span>
-          <span class="action-summary-text" style="flex:1;min-width:0">${suggest}</span>
-          <span class="count-label">${items.length} shown / ${groupTotal} total</span>
-          ${statusFilter !== "approved" && statusFilter !== "rejected" ? `
-            <button class="btn-approve" style="padding:3px 10px;font-size:12px" data-group-btn="${escapeHtml(type)}" data-group-issue="${escapeHtml(issueKey)}" data-group-status="approved" onclick="event.preventDefault();event.stopPropagation();groupBatch('${jobId}', '${escapeHtml(type)}', 'approved', '${escapeHtml(issueKey)}')">Approve group</button>
-            <button class="btn-reject" style="padding:3px 10px;font-size:12px" data-group-btn="${escapeHtml(type)}" data-group-issue="${escapeHtml(issueKey)}" data-group-status="rejected" onclick="event.preventDefault();event.stopPropagation();groupBatch('${jobId}', '${escapeHtml(type)}', 'rejected', '${escapeHtml(issueKey)}')">Reject group</button>
-          ` : ""}
-        </summary>
-        <div class="action-group-body">${preview}${extraWrap}</div>
-      </details>`;
+      <div class="accordion-item ${gi === 0 ? 'open' : ''}" data-group="${escapeHtml(gkey)}">
+        <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
+          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding-right:16px;">
+            <svg class="accordion-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            <span class="action-type">${escapeHtml(type)}</span>
+            <span class="action-summary-text" style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${suggest}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="count-label">${items.length} shown / ${groupTotal} total</span>
+            ${statusFilter !== "approved" && statusFilter !== "rejected" ? `
+              <button class="btn-approve" style="padding:3px 10px;font-size:12px" data-group-btn="${escapeHtml(type)}" data-group-issue="${escapeHtml(issueKey)}" data-group-status="approved" onclick="event.preventDefault();event.stopPropagation();groupBatch('${jobId}', '${escapeHtml(type)}', 'approved', '${escapeHtml(issueKey)}')">Approve</button>
+              <button class="btn-reject" style="padding:3px 10px;font-size:12px" data-group-btn="${escapeHtml(type)}" data-group-issue="${escapeHtml(issueKey)}" data-group-status="rejected" onclick="event.preventDefault();event.stopPropagation();groupBatch('${jobId}', '${escapeHtml(type)}', 'rejected', '${escapeHtml(issueKey)}')">Reject</button>
+            ` : ""}
+          </div>
+        </div>
+        <div class="accordion-content">
+          <div class="action-group-body" style="padding: 16px 0;">${preview}${extraWrap}</div>
+        </div>
+      </div>`;
     gi++;
   }
+  html += "</div>";
   list.innerHTML = html;
 
   const hasMore = actionsOffset + data.actions.length < data.total;
@@ -1587,20 +1609,32 @@ async function loadVersions(jobId) {
       el.innerHTML = '<p class="section-desc">No changes applied yet. Approve action items to generate improved content.</p>';
       return;
     }
-    el.innerHTML = data.versions.map(v => `
-      <div class="action-card" style="border-left:3px solid ${v.status === 'approved' ? 'var(--success)' : 'var(--danger)'}">
-        <div class="action-header">
-          <span class="action-type">${v.content_type}</span>
-          <span style="font-size:12px;color:${v.status === 'approved' ? 'var(--success)' : 'var(--danger)'};font-weight:600;text-transform:capitalize">${v.status === 'approved' ? 'Applied' : 'Rejected'}</span>
-          <span style="font-size:12px;color:var(--text-secondary)">${v.field}</span>
-          ${v.status === 'approved' && v.after ? `<span style="font-size:11px;color:var(--text-secondary)">${v.qa === 'suggestion' ? '(suggestion)' : v.qa === 'fallback' ? '(template fallback)' : ''} ${v.generated_by || ''}</span>` : ""}
+    let html = "<div class='accordion'>";
+    html += data.versions.map((v, i) => `
+      <div class="accordion-item ${i === 0 ? 'open' : ''}">
+        <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')" style="border-left:3px solid ${v.status === 'approved' ? 'var(--success)' : 'var(--danger)'}">
+          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding-right:16px;">
+            <svg class="accordion-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+            <span class="action-type">${v.content_type}</span>
+            <span style="font-size:12px;color:${v.status === 'approved' ? 'var(--success)' : 'var(--danger)'};font-weight:600;text-transform:capitalize">${v.status === 'approved' ? 'Applied' : 'Rejected'}</span>
+            <span style="font-size:12px;color:var(--text-secondary)">${v.field}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:12px;color:var(--text-secondary);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeHtml(v.page_url || "")}">${linkify(v.page_url || "", 30)}</span>
+          </div>
         </div>
-        <div class="action-issues"><strong>Before:</strong> <span style="color:var(--danger)">${escapeHtml((v.before || "-").substring(0, 200))}</span></div>
-        <div class="action-improvements"><strong>After:</strong> <span style="color:var(--success)">${v.status === 'approved' ? escapeHtml((v.after || "").substring(0, 200) || "No content generated") : "Not generated (rejected)"}</span></div>
-        <div style="font-size:12px;color:var(--text-secondary);margin-top:6px">${linkify(v.page_url || "", 80)} · ${v.generated_by || ""}</div>
-        ${v.status === 'approved' && v.qa === 'suggestion' ? `<button class="btn-secondary" style="font-size:12px;padding:4px 10px;margin-top:8px" onclick="regenerateVersion('${v.action_id || v.id}')">Regenerate</button>` : ""}
+        <div class="accordion-content">
+          <div style="padding:16px 0;">
+            ${v.status === 'approved' && v.after ? `<div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px">${v.qa === 'suggestion' ? '(suggestion)' : v.qa === 'fallback' ? '(template fallback)' : ''} ${v.generated_by || ''}</div>` : ""}
+            <div class="action-issues" style="margin-bottom:8px;"><strong>Before:</strong> <span style="color:var(--danger)">${escapeHtml((v.before || "-").substring(0, 500))}</span></div>
+            <div class="action-improvements"><strong>After:</strong> <span style="color:var(--success)">${v.status === 'approved' ? escapeHtml((v.after || "").substring(0, 500) || "No content generated") : "Not generated (rejected)"}</span></div>
+            ${v.status === 'approved' && v.qa === 'suggestion' ? `<button class="btn-secondary" style="font-size:12px;padding:4px 10px;margin-top:12px" onclick="regenerateVersion('${v.action_id || v.id}')">Regenerate</button>` : ""}
+          </div>
+        </div>
       </div>
     `).join("");
+    html += "</div>";
+    el.innerHTML = html;
   } catch (err) {
     el.innerHTML = `<p class="section-desc">Error loading versions: ${escapeHtml(err.message)}</p>`;
   }
@@ -1619,13 +1653,13 @@ document.getElementById("action-sort-filter")?.addEventListener("change", () => 
 });
 
 document.getElementById("expand-all-actions-btn")?.addEventListener("click", () => {
-  document.querySelectorAll(".action-group").forEach(g => { g.open = true; });
+  document.querySelectorAll(".accordion-item").forEach(g => { g.classList.add("open"); });
   document.querySelectorAll(".action-details").forEach(d => { d.style.display = "block"; });
   document.querySelectorAll(".action-expand-icon").forEach(i => { i.textContent = "▾"; });
 });
 
 document.getElementById("collapse-all-actions-btn")?.addEventListener("click", () => {
-  document.querySelectorAll(".action-group").forEach(g => { g.open = false; });
+  document.querySelectorAll(".accordion-item").forEach(g => { g.classList.remove("open"); });
   document.querySelectorAll(".action-details").forEach(d => { d.style.display = "none"; });
   document.querySelectorAll(".action-expand-icon").forEach(i => { i.textContent = "▸"; });
 });
@@ -1687,9 +1721,30 @@ function renderApplyGuide(guide) {
   card.innerHTML = `<pre style="white-space:pre-wrap;font-family:monospace;font-size:12px;line-height:1.6;margin:0;max-height:420px;overflow:auto">${safe}</pre>`;
 }
 
-document.getElementById("apply-sandbox-btn")?.addEventListener("click", () => {
-  const tab = document.querySelector('.tab[data-tab="sandbox-approvals"]');
-  if (tab) tab.click();
+document.getElementById("comp-create-pr-btn")?.addEventListener("click", async () => {
+  if (!currentJobId) return;
+  if (!confirm("Create a GitHub PR from this single page comparison?")) return;
+  const btn = document.getElementById("comp-create-pr-btn");
+  btn.disabled = true;
+  btn.textContent = "Creating PR...";
+  try {
+    const resp = await fetch(`${API_BASE}/actions/${currentJobId}/apply-single-page`, { method: "POST" });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.detail || resp.statusText || data.message);
+    if (data.ok) {
+      showToast("Comparison changes sent to GitHub PR");
+      if (data.html_url) {
+        showToast(`PR created: ${data.html_url}`);
+      }
+    } else {
+      showToast(data.message || "Failed to create PR", true);
+    }
+  } catch (err) {
+    showToast("Error: " + err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Create GitHub PR";
+  }
 });
 
 document.getElementById("apply-changes-btn")?.addEventListener("click", async () => {
@@ -2213,8 +2268,11 @@ function showProgress() {
   if (stopBtn) {
     stopBtn.textContent = "Stop";
     stopBtn.className = "btn-danger btn-sm";
+    stopBtn.classList.remove("hidden");
     stopBtn.onclick = stopCurrentAnalysis;
   }
+  const retryBtn = document.getElementById("retry-analysis-btn");
+  if (retryBtn) retryBtn.classList.add("hidden");
   const stopNote = document.getElementById("stop-analysis-note");
   if (stopNote) stopNote.textContent = "Stops the crawl and removes partial data.";
   if (railActivityEl) {
@@ -2259,6 +2317,36 @@ async function stopCurrentAnalysis() {
     if (stopBtn) {
       stopBtn.disabled = false;
       stopBtn.textContent = "Stop";
+    }
+  }
+}
+
+async function retryAnalysis(jobId) {
+  const retryBtn = document.getElementById("retry-analysis-btn");
+  if (retryBtn) {
+    retryBtn.disabled = true;
+    retryBtn.textContent = "Retrying...";
+  }
+  try {
+    const resp = await fetch(`${API_BASE}/analysis/${jobId}/retry`, { method: "POST" });
+    if (resp.ok) {
+      progressMessage.textContent = "Queued for retry...";
+      showToast("Retrying the analysis…");
+      if (retryBtn) retryBtn.classList.add("hidden");
+      startPolling(jobId);
+    } else {
+      const data = await resp.json().catch(() => ({}));
+      showToast("Could not retry: " + (data.detail || resp.statusText));
+      if (retryBtn) {
+        retryBtn.disabled = false;
+        retryBtn.textContent = "Retry";
+      }
+    }
+  } catch (err) {
+    showToast("Could not retry: " + err.message);
+    if (retryBtn) {
+      retryBtn.disabled = false;
+      retryBtn.textContent = "Retry";
     }
   }
 }
@@ -4263,6 +4351,11 @@ async function loadSandboxComparison() {
   loading.style.display = 'block';
   error.classList.add('hidden');
   content.classList.add('hidden');
+
+  const viewSelector = document.getElementById('comp-view-selector');
+  if (viewSelector) viewSelector.style.display = 'none';
+  const sitewideContent = document.getElementById('sandbox-sitewide-content');
+  if (sitewideContent) sitewideContent.classList.add('hidden');
   
   try {
     const response = await fetch('/api/sandbox/comparison');
@@ -4349,6 +4442,7 @@ async function loadSandboxComparison() {
           <div style="font-size: 13px; margin-bottom: 4px; font-family: monospace;">
             Commit: ${h.commit_hash || 'None'}
           </div>
+          ${h.preview_url ? `<div style="font-size: 12px; margin-top: 4px;"><a href="${h.preview_url}" target="_blank" style="color: var(--accent); text-decoration: none;">Vercel Preview ↗</a></div>` : ''}
         `;
         historyContainer.appendChild(item);
       }
@@ -4365,17 +4459,6 @@ async function loadSandboxComparison() {
   }
 }
 
-// Remove the bad hook
-
-
-let isSinglePageAnalysisActive = false;
-
-document.querySelector('.tab[data-tab="sandbox-comparison"]').addEventListener('click', () => {
-  if (!isSinglePageAnalysisActive) {
-    loadSandboxComparison();
-  }
-});
-
 async function startSinglePageAnalysis(event) {
   event.preventDefault();
   const urlInput = document.getElementById('url-input').value.trim();
@@ -4390,86 +4473,136 @@ async function startSinglePageAnalysis(event) {
 
   btn.disabled = true;
   spinner.classList.remove('hidden');
-  text.textContent = "Analyzing & Applying AI...";
+  text.textContent = "Starting Single Page Analysis...";
+  
+  showProgress();
+  showToast("Starting single page analysis...");
 
   try {
-    const res = await fetch('/api/sandbox/single-page', {
+    const res = await fetch(`${API_BASE}/analysis`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: urlInput })
+      body: JSON.stringify({ 
+        url: urlInput, 
+        is_single_page_comparison: true, 
+        max_pages: 1,
+        email: (document.getElementById("email-input")?.value || "").trim() 
+      })
     });
 
     if (!res.ok) throw new Error("Failed to start analysis");
 
-    const { job_id } = await res.json();
-
-    // Poll for completion
-    const interval = setInterval(async () => {
-      try {
-        const pollRes = await fetch(`/api/sandbox/single-page/${job_id}`);
-        if (pollRes.ok) {
-          const pollData = await pollRes.json();
-          if (pollData.status === 'completed') {
-            clearInterval(interval);
-            btn.disabled = false;
-            spinner.classList.add('hidden');
-            text.textContent = "Single Page Analysis (Demo)";
-
-            isSinglePageAnalysisActive = true;
-
-            // Populate comparison tab
-            populateComparisonTab(pollData.comparison);
-
-            // Show results section
-            document.getElementById('results-section').classList.remove('hidden');
-            document.getElementById('input-section').classList.add('hidden');
-            document.getElementById('results-url').textContent = "Single Page Analysis";
-            document.getElementById('results-status').textContent = urlInput;
-            setDashboardVisible(true);
-            document.body.classList.add("jobless"); // Hide right rail for cleaner look
-
-            // Switch to tab
-            switchTab('sandbox-comparison');
-
-            // Reset flag after switching so that subsequent manual clicks fetch normally
-            setTimeout(() => {
-              isSinglePageAnalysisActive = false;
-            }, 500);
-          } else if (pollData.status === 'failed') {
-            clearInterval(interval);
-            throw new Error(pollData.error || "Analysis failed");
-          }
-        }
-      } catch (err) {
-        clearInterval(interval);
-        throw err;
-      }
-    }, 2000);
-
-  } catch (err) {
-    showToast(err.message, true);
+    const data = await res.json();
+    currentJobId = data.job_id;
+    history.replaceState(null, "", "#job/" + data.job_id);
+    resultsUrl.textContent = data.url;
+    
     btn.disabled = false;
     spinner.classList.add('hidden');
     text.textContent = "Single Page Analysis (Demo)";
+    
+    startPolling(data.job_id);
+  } catch (err) {
+    showToast("Error: " + err.message, true);
+    btn.disabled = false;
+    spinner.classList.add('hidden');
+    text.textContent = "Single Page Analysis (Demo)";
+    hideProgress();
   }
 }
 
-function populateComparisonTab(data) {
+async function populateComparisonTab(jobId, summary) {
   const loading = document.getElementById('sandbox-comparison-loading');
   const error = document.getElementById('sandbox-comparison-error');
-  const content = document.getElementById('sandbox-comparison-content');
+  const sitewideContent = document.getElementById('sandbox-sitewide-content');
+  const pageContent = document.getElementById('sandbox-comparison-content');
+  const viewSelector = document.getElementById('comp-view-selector');
+  const pageOptionsGroup = document.getElementById('comp-page-options');
 
   loading.style.display = 'none';
   error.classList.add('hidden');
-  content.classList.remove('hidden');
+  pageContent.classList.add('hidden');
 
-  document.getElementById('comp-img-baseline').src = `data:image/jpeg;base64,${data.visuals.baseline_b64}`;
-  document.getElementById('comp-img-current').src = `data:image/jpeg;base64,${data.visuals.current_b64}`;
 
-  document.getElementById('comp-score-old').textContent = data.seo_score.baseline;
-  document.getElementById('comp-score-new').textContent = data.seo_score.current;
+  // Fetch all pages to populate the dropdown (only if it's a full site crawl)
+  pageOptionsGroup.innerHTML = '';
+  if (summary.is_single_page_comparison) {
+    const opt = document.createElement('option');
+    opt.value = summary.url || "single-page";
+    opt.textContent = `📄 ${summary.url || "Target Page"}`;
+    pageOptionsGroup.appendChild(opt);
+    viewSelector.value = opt.value;
+  } else {
+    try {
+      const resp = await fetch(`/api/pages/${jobId}?limit=500`);
+      if (resp.ok) {
+        const data = await resp.json();
+        for (const page of data.pages || []) {
+          const opt = document.createElement('option');
+          opt.value = page.url;
+          opt.textContent = `📄 ${page.url.replace(/^https?:\/\/[^\/]+/, '') || '/'}`;
+          pageOptionsGroup.appendChild(opt);
+        }
+        if (data.pages && data.pages.length > 0) {
+          viewSelector.value = data.pages[0].url;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load pages for comparison dropdown", e);
+    }
+  }
 
-  const delta = data.seo_score.current - data.seo_score.baseline;
+  // Handle View Change
+  async function handleViewChange() {
+    const val = viewSelector.value;
+    if (!val) return;
+    
+    error.classList.add('hidden');
+    pageContent.classList.add('hidden');
+    loading.style.display = 'block';
+      
+    try {
+      let compData = null;
+      if (summary.is_single_page_comparison && summary.comparison) {
+        compData = summary.comparison; // Already pre-generated
+      } else {
+        // Fetch on demand
+        const resp = await fetch(`/api/analysis/${jobId}/compare-page`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: val })
+        });
+        if (!resp.ok) {
+          const err = await resp.json();
+          throw new Error(err.detail || "Failed to generate comparison");
+        }
+        compData = await resp.json();
+      }
+      renderPageComparison(compData);
+      loading.style.display = 'none';
+      pageContent.classList.remove('hidden');
+    } catch (err) {
+      loading.style.display = 'none';
+      error.textContent = err.message;
+      error.classList.remove('hidden');
+    }
+  }
+
+  // Assign onchange directly to avoid leaking multiple listeners
+  viewSelector.onchange = handleViewChange;
+  
+  // Trigger initial render
+  handleViewChange();
+}
+
+function renderPageComparison(data) {
+  document.getElementById('comp-img-baseline').src = `data:image/jpeg;base64,${data.visuals?.baseline_b64 || ''}`;
+  document.getElementById('comp-img-current').src = `data:image/jpeg;base64,${data.visuals?.current_b64 || ''}`;
+
+  document.getElementById('comp-score-old').textContent = data.seo_score?.baseline || '--';
+  document.getElementById('comp-score-new').textContent = data.seo_score?.current || '--';
+
+  const delta = (data.seo_score?.current || 0) - (data.seo_score?.baseline || 0);
   const deltaEl = document.getElementById('comp-score-delta');
   if (delta > 0) {
     deltaEl.textContent = `+${delta} Points`;
@@ -4488,7 +4621,7 @@ function populateComparisonTab(data) {
   const tbody = document.getElementById('comp-fields-tbody');
   tbody.innerHTML = '';
 
-  for (const f of data.fields) {
+  for (const f of (data.fields || [])) {
     const tr = document.createElement('tr');
     tr.style.borderBottom = '1px solid var(--border-color)';
 
@@ -4496,11 +4629,12 @@ function populateComparisonTab(data) {
     const badgeColor = isChanged ? '#dcfce7' : '#f3f4f6';
     const badgeTextColor = isChanged ? '#166534' : '#374151';
     const statusText = isChanged ? 'Changed' : 'Unchanged';
-    const diffStyle = isChanged ? 'background:#dcfce7; padding:2px 4px; border-radius:4px;' : '';
+    const oldDiffStyle = isChanged ? 'background:#fee2e2; color:#991b1b; text-decoration:line-through; padding:2px 4px; border-radius:4px; display:inline-block; margin-bottom:4px;' : '';
+    const diffStyle = isChanged ? 'background:#dcfce7; color:#166534; padding:2px 4px; border-radius:4px; display:inline-block;' : '';
 
     tr.innerHTML = `
-      <td style="padding: 12px 16px; font-weight: 500; text-transform: capitalize;">${f.field.replace('_', ' ')}</td>
-      <td style="padding: 12px 16px; color: var(--text-muted); font-size: 13px;">${escapeHtml(f.baseline || 'None')}</td>
+      <td style="padding: 12px 16px; font-weight: 500; text-transform: capitalize;">${f.field.replace(/_/g, ' ')}</td>
+      <td style="padding: 12px 16px; color: var(--text-muted); font-size: 13px;"><span style="${oldDiffStyle}">${escapeHtml(f.baseline || 'None')}</span></td>
       <td style="padding: 12px 16px; font-size: 13px;"><span style="${diffStyle}">${escapeHtml(f.current || 'None')}</span></td>
       <td style="padding: 12px 16px;">
         <span style="background:${badgeColor}; color:${badgeTextColor}; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:500;">
@@ -4513,7 +4647,7 @@ function populateComparisonTab(data) {
 
   const historyContainer = document.getElementById('comp-raw-history');
   historyContainer.innerHTML = '';
-  for (const h of data.history) {
+  for (const h of (data.history || [])) {
     const item = document.createElement('div');
     item.style.padding = '12px';
     item.style.background = 'white';
@@ -4530,6 +4664,7 @@ function populateComparisonTab(data) {
       <div style="font-size: 13px; margin-bottom: 4px; font-family: monospace;">
         Commit: ${h.commit_hash || 'None'}
       </div>
+      ${h.preview_url ? `<div style="font-size: 12px; margin-top: 4px;"><a href="${h.preview_url}" target="_blank" style="color: var(--accent); text-decoration: none;">Vercel Preview ↗</a></div>` : ''}
     `;
     historyContainer.appendChild(item);
   }

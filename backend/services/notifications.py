@@ -178,16 +178,26 @@ async def create_github_pr(domain: str, changes: list[dict], token: str | None =
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
     }
-    body = "\n\n".join(
-        f"## {c.get('content_type', '')} - {c.get('page_url', '')}\n\n"
-        f"{chr(10).join(c.get('identified_issues') or [])}\n\n"
-        f"Suggested: {'; '.join(c.get('improvement_suggestions') or [])}"
-        for c in changes[:20]
-    )
+    body_parts = []
+    for c in changes[:20]:
+        if "field" in c and "new_value" in c:
+            # Single-page comparison format
+            body_parts.append(
+                f"## Field: {c.get('field', '').upper()} - {c.get('target_url', '')}\n\n"
+                f"**Original:**\n```\n{c.get('original_value', '')}\n```\n\n"
+                f"**Suggested New Value:**\n```\n{c.get('new_value', '')}\n```"
+            )
+        else:
+            # Action/Pipeline format
+            body_parts.append(
+                f"## {c.get('content_type', '')} - {c.get('page_url', '')}\n\n"
+                f"{chr(10).join(c.get('identified_issues') or [])}\n\n"
+                f"Suggested: {'; '.join(c.get('improvement_suggestions') or [])}"
+            )
+    
+    body = "\n\n---\n\n".join(body_parts)
     payload = {
         "title": f"[ZuiGO Engine] SEO patch for {domain} ({len(changes)} actions)",
-        "head": f"rankengine/{domain}",
-        "base": "main",
         "body": body or "See attached patch for details.",
     }
     try:
@@ -200,14 +210,14 @@ async def create_github_pr(domain: str, changes: list[dict], token: str | None =
             if not owner:
                 return {"ok": False, "error": "GitHub user lookup returned no login"}
             resp = await client.post(
-                f"https://api.github.com/repos/{owner}/{repo}/pulls",
+                f"https://api.github.com/repos/{owner}/{repo}/issues",
                 headers=headers,
                 json=payload,
             )
         if resp.status_code >= 400:
-            logger.warning("GitHub PR failed: HTTP %s", resp.status_code)
+            logger.warning("GitHub Issue failed: HTTP %s", resp.status_code)
             return {"ok": False, "status_code": resp.status_code}
-        logger.info("GitHub PR created: %s", resp.json().get("html_url", ""))
+        logger.info("GitHub Issue created: %s", resp.json().get("html_url", ""))
         return {"ok": True, "html_url": resp.json().get("html_url", "")}
     except Exception as e:
         logger.warning("GitHub PR error: %s", e)

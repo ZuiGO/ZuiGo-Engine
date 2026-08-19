@@ -368,6 +368,9 @@ async def apply_approved_changes(job_id: str):
     db = get_db()
     job, changes, counts = await _collect_changes(db, job_id)
     domain = (job or {}).get("url", "") or job_id
+    if domain.startswith("http"):
+        from urllib.parse import urlparse
+        domain = urlparse(domain).netloc
     approved = [c for c in changes if c["status"] == "approved"]
     guide = build_apply_guide(domain, changes)
 
@@ -408,14 +411,67 @@ async def apply_approved_changes(job_id: str):
             "html_url": result.get("html_url"),
             "guide": guide,
         }
+    error_msg = (result or {}).get("error") or f"HTTP {(result or {}).get('status_code', '?')}"
     return {
         "ok": False,
         "reason": "pr_failed",
-        "message": "GitHub PR failed. Use the in-repo guide below to apply the changes manually.",
+        "message": f"GitHub PR failed: {error_msg}. Use the in-repo guide below to apply the changes manually.",
         "approved": counts["approved"],
         "domain": domain,
-        "error": (result or {}).get("error") or f"HTTP {(result or {}).get('status_code', '?')}",
+        "error": error_msg,
         "guide": guide,
+    }
+
+
+@router.post("/{job_id}/apply-single-page")
+async def apply_single_page_changes(job_id: str):
+    db = get_db()
+    job = await db.analysis_jobs.find_one({"_id": job_id})
+    if not job or not job.get("comparison"):
+        raise HTTPException(status_code=404, detail="Comparison data not found")
+
+    domain = job.get("url", "") or job_id
+    if domain.startswith("http"):
+        from urllib.parse import urlparse
+        domain = urlparse(domain).netloc
+    comparison = job.get("comparison")
+    
+    # Convert comparison fields into the `changes` format expected by `create_github_pr`
+    # Format: {"target_url": "...", "field": "title", "original_value": "...", "new_value": "..."}
+    changes = []
+    for f in comparison.get("fields", []):
+        if f.get("status") == "changed":
+            changes.append({
+                "target_url": domain,
+                "field": f.get("field", "").lower().replace(" ", "_"),
+                "original_value": f.get("baseline", ""),
+                "new_value": f.get("current", "")
+            })
+
+    if not changes:
+        return {"ok": False, "reason": "no_changes", "message": "No changes to apply."}
+
+    from backend.services.notifications import get_github_config, create_github_pr
+    config = await get_github_config()
+    token = config.get("token")
+
+    if not token:
+        return {"ok": False, "reason": "no_token", "message": "No GitHub token configured. Add a token in Settings."}
+
+    result = await create_github_pr(domain, changes, token=token)
+    
+    if result and result.get("ok"):
+        return {
+            "ok": True,
+            "message": "Changes sent to GitHub as a pull request.",
+            "html_url": result.get("html_url")
+        }
+    
+    error_msg = (result or {}).get("error") or f"HTTP {(result or {}).get('status_code', '?')}"
+    return {
+        "ok": False,
+        "message": f"GitHub PR failed: {error_msg}",
+        "error": error_msg
     }
 
 

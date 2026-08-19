@@ -23,6 +23,7 @@ class AnalyzeRequest(BaseModel):
     url: str
     max_pages: int = 50
     email: str = ""
+    is_single_page_comparison: bool = False
 
 
 class AnalyzeResponse(BaseModel):
@@ -36,6 +37,9 @@ async def start_analysis(req: AnalyzeRequest):
     url = req.url.strip().rstrip("/")
     if not url.startswith("http"):
         url = "https://" + url
+
+    if req.is_single_page_comparison:
+        req.max_pages = 1
 
     job_id = str(uuid.uuid4())
     db = get_db()
@@ -51,10 +55,11 @@ async def start_analysis(req: AnalyzeRequest):
         "error_message": None,
         "summary": None,
         "email": (req.email or "").strip(),
+        "is_single_page_comparison": req.is_single_page_comparison,
     })
 
-    await run_or_fallback("analyze_job", run_analysis_pipeline, job_id, url, req.max_pages)
-    await log_audit("analysis_started", job_id, {"url": url, "max_pages": req.max_pages})
+    await run_or_fallback("analyze_job", run_analysis_pipeline, job_id, url, req.max_pages, req.is_single_page_comparison)
+    await log_audit("analysis_started", job_id, {"url": url, "max_pages": req.max_pages, "single_page": req.is_single_page_comparison})
 
     return {"job_id": job_id, "status": "queued", "url": url, "max_pages": req.max_pages}
 
@@ -104,7 +109,7 @@ async def run_competitor_pipeline(target_job_id: str, competitors: list[str]):
         await _mark_errors(str(e))
 
 
-async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50):
+async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_single_page_comparison: bool = False):
     db = get_db()
     logger.info("Analysis started job=%s url=%s max_pages=%s", job_id, url, max_pages)
 
@@ -116,7 +121,13 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50):
             {"$set": {"status": "running", "progress_message": "Starting crawl..."}}
         )
 
-        summary = await crawl_site(job_id, url, max_pages, seed_sitemap=True, unlimited=True)
+        summary = await crawl_site(
+            job_id, 
+            url, 
+            max_pages, 
+            seed_sitemap=not is_single_page_comparison, 
+            unlimited=not is_single_page_comparison
+        )
         if not summary:
             raise Exception("Crawl returned no results")
         if summary.get("total_pages", 0) == 0:
@@ -158,6 +169,7 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50):
             return await extract_all_content(job_id)
 
         async def _insights():
+            if is_single_page_comparison: return None
             await _progress("Fetching external SEO insights...")
             from backend.services.external_insights import fetch_all_insights
             from backend.routes.seo_insights import CACHE_VERSION
@@ -169,6 +181,7 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50):
             )
 
         async def _backlinks():
+            if is_single_page_comparison: return {"total": 0}
             await _progress("Listing backlink sources...")
             from backend.services.backlinks import fetch_backlinks
             return await fetch_backlinks(job_id, domain)
@@ -178,11 +191,13 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50):
             return await index_job_vectors(job_id)
 
         async def _link_health():
+            if is_single_page_comparison: return {}
             await _progress("Checking link health...")
             from backend.services.link_checker import check_links
             return await check_links(job_id)
 
         async def _performance():
+            if is_single_page_comparison: return {}
             await _progress("Measuring Core Web Vitals...")
             from backend.services.performance_service import fetch_performance
             return await fetch_performance(job_id)
@@ -197,25 +212,30 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50):
             return await audit_structured_data(job_id)
 
         async def _geo_readiness():
+            if is_single_page_comparison: return {"status": "unknown", "score": None, "robots_txt_found": False}
             from backend.services.geo_readiness import check_geo_readiness
             return await check_geo_readiness(url)
 
         async def _sitemap():
+            if is_single_page_comparison: return {}
             await _progress("Auditing sitemap...")
             from backend.services.sitemap import audit_sitemap
             return await audit_sitemap(job_id, url)
 
         async def _ai_visibility():
+            if is_single_page_comparison: return {}
             await _progress("Checking AI-search visibility...")
             from backend.services.ai_visibility import check_ai_visibility
             return await check_ai_visibility(job_id, url)
 
         async def _local_seo():
+            if is_single_page_comparison: return {}
             await _progress("Checking local-SEO readiness...")
             from backend.services.local_seo import check_local_seo
             return await check_local_seo(job_id)
 
         async def _orphans():
+            if is_single_page_comparison: return {"orphan_pages": 0}
             await _progress("Checking industry alignment and orphan pages...")
             from backend.services.orphan_detection import detect_orphan_pages
             return await detect_orphan_pages(job_id)
@@ -282,15 +302,18 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50):
             await analyze_pages(job_id)
 
         async def _geo_alignment():
+            if is_single_page_comparison: return {}
             from backend.services.geo_alignment import audit_geo_alignment
             return await audit_geo_alignment(job_id)
 
         async def _programmatic_seo():
+            if is_single_page_comparison: return {}
             await _progress("Detecting programmatic page templates...")
             from backend.services.programmatic_seo import audit_programmatic_seo
             return await audit_programmatic_seo(job_id)
 
         async def _smart_keywords():
+            if is_single_page_comparison: return {"count": 0}
             await _progress("Extracting smart keywords...")
             from backend.services.keyword_engine import get_smart_keywords
             kws = await get_smart_keywords(job_id, max_total=40, use_llm=True, rebuild=True)
@@ -313,14 +336,41 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50):
             from backend.services.site_health import compute_site_health
             return await compute_site_health(job_id)
 
-        health = (await _stage("site_health", _health, fallback={}))[1]
+        async def _sitewide_factors():
+            await _progress("Generating sitewide factors (robots.txt, llms.txt)...")
+            from backend.services.sitewide_factors import generate_sitewide_factors
+            return await generate_sitewide_factors(job_id, url)
+
+        w3 = dict(await asyncio.gather(*[
+            _stage("site_health", _health, fallback={}),
+            _stage("sitewide_factors", _sitewide_factors, fallback={})
+        ]))
+
+        health = w3["site_health"]
         health_grade = health.get("grade")
 
         try:
             from backend.services.exec_summary import compute_exec_summary
             await compute_exec_summary(job_id)
+        except JobCancelled:
+            raise
         except Exception as exec_err:
             logger.warning("Exec summary failed job=%s: %s", job_id, exec_err)
+
+        if is_single_page_comparison:
+            await _progress("Generating visual comparison...")
+            try:
+                from backend.services.single_page_service import generate_visual_comparison
+                comparison_data = await generate_visual_comparison(job_id, url)
+                if comparison_data:
+                    await db.analysis_jobs.update_one(
+                        {"_id": job_id},
+                        {"$set": {"comparison": comparison_data}}
+                    )
+            except JobCancelled:
+                raise
+            except Exception as cmp_err:
+                logger.error("Visual comparison generation failed for job=%s: %s", job_id, cmp_err)
 
         await db.analysis_jobs.update_one(
             {"_id": job_id},
@@ -372,6 +422,7 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50):
                         "clusters": programmatic.get("clusters_count", 0),
                         "thin_template_pages": programmatic.get("thin_template_pages", 0),
                     },
+                    "sitewide_factors": w3.get("sitewide_factors", {}),
                     "sitemap": {
                         "found": sitemap_audit.get("sitemap_found", False),
                         "valid": sitemap_audit.get("sitemap_valid", False),
@@ -543,6 +594,87 @@ async def get_job_summary(job_id: str):
         "page_type_breakdown": page_type_breakdown,
         "total_user_flows": user_flow_count,
         "summary": job.get("summary"),
+        "comparison": job.get("comparison"),
+        "is_single_page_comparison": job.get("is_single_page_comparison", False),
         "created_at": job.get("created_at"),
         "completed_at": job.get("completed_at"),
     }
+
+
+class ComparePageRequest(BaseModel):
+    url: str
+
+@router.post("/{job_id}/compare-page")
+async def generate_page_comparison(job_id: str, req: ComparePageRequest):
+    """
+    Generates a visual comparison for a specific page on-demand.
+    Used in the multi-page comparison view.
+    """
+    db = get_db()
+    job = await db.analysis_jobs.find_one({"_id": job_id})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    try:
+        # Check if already generated and cached in DB
+        cached = await db.single_page_cache.find_one({"job_id": job_id, "url": req.url})
+        if cached and "comparison_data" in cached:
+            comparison_data = cached["comparison_data"]
+        else:
+            from backend.services.single_page_service import generate_visual_comparison
+            comparison_data = await generate_visual_comparison(job_id, req.url)
+            
+            # Cache it forever for this job/url so the user can instantly view it later
+            if comparison_data:
+                await db.single_page_cache.update_one(
+                    {"job_id": job_id, "url": req.url},
+                    {"$set": {"comparison_data": comparison_data}},
+                    upsert=True
+                )
+        
+        # Save it to the main job doc so /api/actions/{job_id}/apply-single-page can use it later
+        if comparison_data:
+            await db.analysis_jobs.update_one(
+                {"_id": job_id},
+                {"$set": {"comparison": comparison_data}}
+            )
+            
+        return comparison_data
+    except Exception as e:
+        logger.error("Page comparison failed for job=%s url=%s: %s", job_id, req.url, e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{job_id}/retry")
+async def retry_analysis(job_id: str):
+    db = get_db()
+    job = await db.analysis_jobs.find_one({"_id": job_id})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.get("status") != "failed":
+        raise HTTPException(status_code=400, detail="Only failed jobs can be retried")
+        
+    url = job.get("url")
+    # We didn't explicitly store max_pages initially, default to 50 if missing,
+    # but let's try to parse it from the audit log if we really wanted to.
+    # We can just assume 50 for regular crawls, 1 for single-page
+    is_single = job.get("is_single_page_comparison", False)
+    max_pages = 1 if is_single else 50
+    
+    await db.analysis_jobs.update_one(
+        {"_id": job_id},
+        {"$set": {
+            "status": "queued",
+            "progress": 0,
+            "progress_message": "Queued for retry...",
+            "error_message": None,
+            "completed_at": None,
+            "cancelled": False
+        }}
+    )
+    
+    from backend.services.queue import run_or_fallback
+    await run_or_fallback("analyze_job", run_analysis_pipeline, job_id, url, max_pages, is_single)
+    await log_audit("analysis_retried", job_id, {"url": url})
+    
+    return {"status": "queued", "job_id": job_id}

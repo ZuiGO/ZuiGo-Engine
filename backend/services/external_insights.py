@@ -223,16 +223,6 @@ async def fetch_all_insights(domain: str, job_id: str | None = None) -> dict:
         insights["serp_rankings"] = []
         insights["serp_source"] = "none"
         insights["serp_error"] = str(e)
-    if not insights["serp_rankings"]:
-        try:
-            rankings = await se_ranking.ranked_keywords(domain)
-            if rankings:
-                insights["serp_rankings"] = rankings
-                insights["serp_source"] = "se-ranking"
-                insights["serp_error"] = None
-        except Exception:
-            pass
-
     return insights
 
 

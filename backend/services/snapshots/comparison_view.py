@@ -24,7 +24,8 @@ async def get_comparison_data() -> dict:
     current_img = current.get("screenshot_b64", "")
     
     # 2. Fetch suggestions to build the field comparison table
-    suggestions_cursor = db.sandbox_suggestions.find()
+    allowed_fields = ["title", "meta_description", "h1", "alt_text", "content"]
+    suggestions_cursor = db.sandbox_suggestions.find({"field_type": {"$in": allowed_fields}})
     suggestions = await suggestions_cursor.to_list(length=None)
     
     field_comparison = []
@@ -54,23 +55,44 @@ async def get_comparison_data() -> dict:
             "status": status
         })
         
-    # 3. Calculate SEO Score Delta
-    # For a simple demo:
-    # Title (15pts), Meta (15pts), Alt Text (15pts), Schema (20pts)
+    # Fetch latest job to get sitewide factors
+    latest_job = await db.analysis_jobs.find_one(sort=[("created_at", -1)])
+    sitewide = latest_job.get("summary", {}).get("sitewide_factors", {}) if latest_job else {}
+    robots_txt = sitewide.get("robots_txt", "")
+    llms_txt = sitewide.get("llms_txt", "")
+
+    field_comparison.append({
+        "field": "robots_txt",
+        "old_value": "",
+        "new_value": robots_txt,
+        "is_changed": bool(robots_txt),
+        "status": "applied" if robots_txt else "unchanged"
+    })
+    field_comparison.append({
+        "field": "llms_txt",
+        "old_value": "",
+        "new_value": llms_txt,
+        "is_changed": bool(llms_txt),
+        "status": "applied" if llms_txt else "unchanged"
+    })
     
+    # 3. Calculate SEO Score Delta
+    # Deduct points if missing: title (15), meta_description (15), alt_text (10), h1 (10), robots (15), llms (15)
+    from backend.services.single_page_service import evaluate_onpage_score
     def calculate_score(fields: list[dict], use_old: bool) -> int:
-        score = 100
+        field_vals = {}
         for f in fields:
-            val = f["old_value"] if use_old else f["new_value"]
-            if f["field"] == "title" and not val:
-                score -= 15
-            elif f["field"] == "meta_description" and not val:
-                score -= 15
-            elif f["field"] == "alt_text" and not val:
-                score -= 15
-            elif f["field"] == "schema_markup" and not val:
-                score -= 20
-        return max(0, min(100, score))
+            val = f.get("old_value") if use_old else f.get("new_value")
+            field_vals[f["field"]] = val or ""
+            
+        return evaluate_onpage_score(
+            title=field_vals.get("title", ""),
+            desc=field_vals.get("meta_description", ""),
+            h1=field_vals.get("h1", ""),
+            alt_text=field_vals.get("alt_text", ""),
+            robots_txt=robots_txt,
+            llms_txt=llms_txt
+        )
         
     old_score = calculate_score(field_comparison, use_old=True)
     new_score = calculate_score(field_comparison, use_old=False)

@@ -12,6 +12,7 @@ JOB_COLLECTIONS = [
     "local_seo_summaries", "hreflang_audits",
     "url_hygiene_audits", "indexation_audits", "image_optimization_audits",
     "programmatic_seo_audits", "exec_summaries", "serp_cache", "job_keywords",
+    "single_page_cache",
 ]
 
 

@@ -56,9 +56,13 @@ _ARTICLE_SIGNALS = [
 
 
 def classify_page_type(url: str, soup=None, title: str = "", meta_description: str = "") -> str:
-    path = urlparse(url).path.strip("/")
+    parsed = urlparse(url)
+    path = parsed.path.strip("/")
+    
+    # If the URL has a query string, it's likely a routed page (e.g. ?p=123), so don't blindly call it "home"
     if not path or path.lower() in ("index.html", "index.htm", "index.php", "default.html"):
-        return "home"
+        if not parsed.query:
+            return "home"
 
     for pattern, ptype in _PATTERN_RULES:
         if pattern.search(url):

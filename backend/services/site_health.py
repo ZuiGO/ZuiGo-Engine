@@ -111,29 +111,15 @@ async def compute_site_health(job_id: str) -> dict:
             elif avg_cwv < 80:
                 issues.append({"severity": "medium", "message": f"Core Web Vitals need work (avg score {avg_cwv}/100)."})
 
-        score = 100
-        if metrics["broken_link_rate"] is not None:
-            score -= min(30, round(3 * metrics["broken_link_rate"]))
-        if metrics["alt_text_coverage"] is not None:
-            score -= round(15 * (100 - metrics["alt_text_coverage"]) / 100)
-        if metrics["meta_description_coverage"] is not None:
-            score -= round(10 * (100 - metrics["meta_description_coverage"]) / 100)
-        if metrics["h1_coverage"] is not None:
-            score -= round(5 * (100 - metrics["h1_coverage"]) / 100)
-        score -= min(10, round(2 * metrics["thin_pages"]))
-        if cwv_scores:
-            score -= round(15 * (100 - avg_cwv) / 100)
+
         https_pages = sum(1 for p in pages if p.get("https_entry"))
         metrics["https_entry_pages"] = https_pages
-        score -= n - https_pages
         deep_count = sum(1 for p in pages if (p.get("click_depth") or 0) > 3)
         metrics["deep_click_depth_pages"] = deep_count
         mobile_friendly = sum(1 for p in pages if p.get("mobile_friendly") is True)
         mobile_evaluated = sum(1 for p in pages if p.get("mobile_friendly") is not None)
         metrics["mobile_friendly_pages"] = mobile_friendly
         metrics["mobile_friendly_evaluated"] = mobile_evaluated
-        score -= round(2 * (mobile_evaluated - mobile_friendly))
-        score = max(0, min(100, score))
 
     pending = await db.action_items.count_documents({"job_id": job_id, "status": "pending"})
     metrics["pending_action_items"] = pending
@@ -272,6 +258,89 @@ async def compute_site_health(job_id: str) -> dict:
         metrics["image_occurrences"] = img.get("image_occurrences") or metrics.get("images_total")
         if img.get("score", 100) < 60:
             issues.append({"severity": "low", "message": f"Image optimization weak ({img.get('score')}/100): modern formats and dimensions affect CWV/LCP."})
+
+    # ---------------------------------------------------------
+    # NEW WEIGHTED SCORING ENGINE (100-point categorical model)
+    # ---------------------------------------------------------
+    
+    # 1. Technical SEO (25%)
+    br_rate = metrics.get("broken_link_rate") or 0
+    deep = metrics.get("deep_click_depth_pages", 0)
+    redirects = metrics.get("long_redirect_chain_pages", 0)
+    tech_score = max(0, 100 - (10 * br_rate) - deep - redirects)
+    
+    # 2. Performance (20%)
+    perf_score = metrics.get("avg_cwv_score")
+    if perf_score is None:
+        perf_score = 100
+        
+    # 3. On-Page SEO (15%)
+    meta_cov = metrics.get("meta_description_coverage")
+    h1_cov = metrics.get("h1_coverage")
+    m = meta_cov if meta_cov is not None else 100
+    h = h1_cov if h1_cov is not None else 100
+    onpage_score = (m + h) / 2
+    
+    # 4. Content Quality (15%)
+    thin = metrics.get("thin_pages", 0)
+    dup_pages = metrics.get("duplicate_pages", 0)
+    content_score = 100
+    if n > 0:
+        content_score = max(0, 100 - ((thin + dup_pages) / n * 100))
+        
+    # 5. Mobile Usability (10%)
+    mob_eval = metrics.get("mobile_friendly_evaluated", 0)
+    mob_pass = metrics.get("mobile_friendly_pages", 0)
+    mobile_score = 100
+    if mob_eval > 0:
+        mobile_score = (mob_pass / mob_eval) * 100
+        
+    # 6. Links / Backlinks (5%)
+    orphans = metrics.get("orphan_pages", 0)
+    links_score = 100
+    if n > 0:
+        links_score = max(0, 100 - (orphans / n * 100))
+        
+    # 7. Security (5%)
+    https_entry = metrics.get("https_entry_pages", 0)
+    security_score = 100
+    if n > 0:
+        security_score = (https_entry / n) * 100
+        
+    # 8. Structured Data / A11y (5%)
+    alt_cov = metrics.get("alt_text_coverage")
+    a11y = alt_cov if alt_cov is not None else 100
+    
+    sd_missing = metrics.get("structured_data_missing", 0)
+    schema = 100
+    if n > 0:
+        schema = max(0, 100 - (sd_missing / n * 100))
+    schema_a11y_score = (a11y + schema) / 2
+    
+    # Calculate final weighted sum
+    score = round(
+        (tech_score * 0.25) +
+        (perf_score * 0.20) +
+        (onpage_score * 0.15) +
+        (content_score * 0.15) +
+        (mobile_score * 0.10) +
+        (links_score * 0.05) +
+        (security_score * 0.05) +
+        (schema_a11y_score * 0.05)
+    )
+    score = max(0, min(100, score))
+    
+    # Save individual category scores to metrics for transparency
+    metrics["category_scores"] = {
+        "technical": round(tech_score),
+        "performance": round(perf_score),
+        "on_page": round(onpage_score),
+        "content": round(content_score),
+        "mobile": round(mobile_score),
+        "links": round(links_score),
+        "security": round(security_score),
+        "schema_a11y": round(schema_a11y_score)
+    }
 
     health = {
         "job_id": job_id,

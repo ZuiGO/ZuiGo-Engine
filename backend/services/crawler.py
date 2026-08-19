@@ -344,7 +344,7 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
             await check_cancelled(job_id)
             batch_size = min(concurrency, ceiling - crawled)
             batch = queue[:batch_size]
-            queue[:] = queue[concurrency:]
+            queue[:] = queue[batch_size:]
 
             tasks = []
             urls_to_crawl = []
@@ -378,14 +378,20 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
                     page_for_db = dict(result)
                     page_for_db.pop("internal_link_urls", None)
                     page_for_db.pop("external_link_urls", None)
-                    await db.pages.insert_one({"job_id": job_id, **page_for_db})
+                    await db.pages.update_one(
+                        {"job_id": job_id, "url": result["url"]},
+                        {"$set": page_for_db},
+                        upsert=True
+                    )
 
-                    await db.page_links.insert_one({
-                        "job_id": job_id,
-                        "url": result["url"],
-                        "internal_link_urls": result.get("internal_link_urls", []),
-                        "external_link_urls": result.get("external_link_urls", []),
-                    })
+                    await db.page_links.update_one(
+                        {"job_id": job_id, "url": result["url"]},
+                        {"$set": {
+                            "internal_link_urls": result.get("internal_link_urls", []),
+                            "external_link_urls": result.get("external_link_urls", []),
+                        }},
+                        upsert=True
+                    )
 
                     await update_progress(crawled, f"Crawled {urlparse(result['url']).path or '/'}")
 
