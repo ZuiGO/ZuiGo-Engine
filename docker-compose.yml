@@ -1,3 +1,5 @@
+name: zuigo-engine
+
 services:
   mongodb:
     image: mongodb/mongodb-community-server:7.0-ubi8

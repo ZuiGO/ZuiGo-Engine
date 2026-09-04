@@ -34,9 +34,7 @@
       <button id="chat-toggle" class="chat-toggle" style="padding: 6px 12px; font-size: 13px;">💬 Chat</button>
       <div id="chat-panel" class="chat-panel hidden" style="position: absolute; top: calc(100% + 12px); right: 0; margin-bottom: 0; transform-origin: top right; z-index: 99999;">
         <div class="chat-panel-header">
-          <div class="chat-tabs" id="chat-tabs">
-            <button class="chat-tab-btn active" data-target="chat-box">💬 Chat</button>
-            <button class="chat-tab-btn" data-target="agent-box">🤖 Agent<span id="agent-alert-dot" class="alert-dot hidden"></span></button>
+          <div class="chat-tabs" id="chat-tabs" style="display: none;">
           </div>
           <span id="chat-context-hint" class="chat-context-hint"></span>
           <button id="chat-close" class="chat-close" title="Close">✕</button>
@@ -49,19 +47,6 @@
             <input type="text" id="chat-input" placeholder="Ask me anything about SEO..." disabled>
             <button type="submit" id="chat-send" disabled>Send</button>
           </form>
-        </div>
-        <div class="chat-box hidden" id="agent-box" style="display: flex; flex-direction: column;">
-          <div class="agent-status-bar" style="padding: 8px 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface);">
-            <span style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Current Task</span>
-            <span id="agent-status-badge" class="badge" style="background: var(--bg-elevated); color: var(--text-muted);">Idle</span>
-          </div>
-          <div class="chat-messages" id="agent-messages" style="flex: 1; overflow-y: auto;">
-            <div class="chat-message bot" style="opacity: 0.7;">No agent run active for this site.</div>
-          </div>
-          <div id="agent-action-group" class="chat-input-group hidden" style="padding: 12px; background: var(--bg-surface); border-top: 1px solid var(--border); gap: 8px; flex-shrink: 0;">
-            <button type="button" id="agent-approve-btn" class="btn-primary" style="flex: 1;">Approve</button>
-            <button type="button" id="agent-stop-btn" class="btn-danger" style="flex: 1;">Stop</button>
-          </div>
         </div>
       </div>
     </div>
@@ -396,7 +381,6 @@
           <p id="results-status" class="results-status"></p>
         </div>
         <div style="display:flex; gap:8px; align-items:center;">
-          <button id="quick-run-agent" class="btn-primary" style="background:#4f46e5; border-color:#4338ca;">🤖 Run Agent Audit</button>
           <button id="new-analysis-btn" class="btn-secondary">New Analysis</button>
         </div>
       </div>
@@ -404,7 +388,7 @@
       <nav class="tabs" id="tabs" aria-label="Dashboard sections">
         <button class="tab active" data-tab="overview">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v10l-8 4-8-4V7z"/><path d="M12 12l8-5M12 12l-8-5M12 12v9"/></svg>
-          <span>Overview</span>
+          <span>Metrics</span>
         </button>
         <button class="tab" data-tab="sites">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
@@ -465,6 +449,8 @@
           <span>Settings</span>
         </button>
       </nav>
+
+
 
       <div class="tab-content" id="tab-overview">
         <div class="stats-grid" id="overview-stats"><div class="skeleton skeleton-card skeleton-sm"></div><div class="skeleton skeleton-card skeleton-sm"></div><div class="skeleton skeleton-card skeleton-sm"></div><div class="skeleton skeleton-card skeleton-sm"></div></div>
@@ -984,23 +970,41 @@
         
         <div id="sandbox-comparison-content" class="hidden">
           <div style="display: flex; gap: 24px; margin-bottom: 24px;">
-            <div style="flex: 2; background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
-              <h3 style="margin-top:0;margin-bottom:16px;font-size:16px;">SEO Score Impact</h3>
-              <div style="display:flex; align-items:center; gap: 16px;">
-                <div style="text-align:center;">
-                  <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase;">Baseline Score</div>
-                  <div id="comp-score-old" style="font-size:28px; font-weight:bold; color:var(--text-primary);">--</div>
+            <div style="flex: 2; display: flex; gap: 16px;">
+              <div style="flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
+                <h3 style="margin-top:0;margin-bottom:16px;font-size:16px;">SEO Score Impact</h3>
+                <div style="display:flex; align-items:center; gap: 16px;">
+                  <div style="text-align:center;">
+                    <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Baseline Score</div>
+                    <div id="comp-score-old" style="font-size:28px; font-weight:bold; color:var(--text);">--</div>
+                  </div>
+                  <div style="font-size:24px; color:var(--text-secondary);">→</div>
+                  <div style="text-align:center;">
+                    <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Current Score</div>
+                    <div id="comp-score-new" style="font-size:28px; font-weight:bold; color:var(--text);">--</div>
+                  </div>
+                  <div id="comp-score-delta" style="margin-left:auto; font-size:20px; font-weight:bold; padding: 6px 12px; border-radius: 20px;"></div>
                 </div>
-                <div style="font-size:24px; color:var(--text-muted);">→</div>
-                <div style="text-align:center;">
-                  <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase;">Current Score</div>
-                  <div id="comp-score-new" style="font-size:28px; font-weight:bold; color:var(--text-primary);">--</div>
+              </div>
+
+              <div style="flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
+                <h3 style="margin-top:0;margin-bottom:16px;font-size:16px;">Web Vitals Impact</h3>
+                <div style="display:flex; align-items:center; gap: 16px;">
+                  <div style="text-align:center;">
+                    <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Baseline</div>
+                    <div id="comp-vitals-old" style="font-size:28px; font-weight:bold; color:var(--text);">--</div>
+                  </div>
+                  <div style="font-size:24px; color:var(--text-secondary);">→</div>
+                  <div style="text-align:center;">
+                    <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Current</div>
+                    <div id="comp-vitals-new" style="font-size:28px; font-weight:bold; color:var(--text);">--</div>
+                  </div>
+                  <div id="comp-vitals-delta" style="margin-left:auto; font-size:20px; font-weight:bold; padding: 6px 12px; border-radius: 20px;"></div>
                 </div>
-                <div id="comp-score-delta" style="margin-left:auto; font-size:20px; font-weight:bold; padding: 6px 12px; border-radius: 20px;"></div>
               </div>
             </div>
             
-            <div style="flex: 1; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; max-height: 140px; overflow-y: auto;">
+            <div style="flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; max-height: 140px; overflow-y: auto;">
               <h3 style="margin-top:0; margin-bottom: 12px; font-size: 16px;">Raw History Trail</h3>
               <div id="comp-raw-history" style="display: flex; flex-direction: column; gap: 8px;">
               </div>
@@ -1008,10 +1012,10 @@
           </div>
           
           <h3 style="margin-bottom: 12px; font-size: 16px;">Field-by-Field Analysis</h3>
-          <div style="background: white; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
+          <div style="background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
             <table style="width: 100%; text-align: left; border-collapse: collapse;">
               <thead>
-                <tr style="background: var(--bg-surface); border-bottom: 1px solid var(--border-color);">
+                <tr style="background: var(--bg-surface); border-bottom: 1px solid var(--border);">
                   <th style="padding: 12px 16px; font-weight: 500;">Field</th>
                   <th style="padding: 12px 16px; font-weight: 500;">Baseline Value</th>
                   <th style="padding: 12px 16px; font-weight: 500;">Current Value</th>
@@ -1082,7 +1086,7 @@
                 <div class="swatch-sub">--accent-glow</div>
               </div>
               <div class="swatch-card">
-                <div class="swatch-preview" style="background:var(--text-primary)"></div>
+                <div class="swatch-preview" style="background:var(--text)"></div>
                 <div class="swatch-title">Primary Text</div>
                 <div class="swatch-sub">--text-primary</div>
               </div>

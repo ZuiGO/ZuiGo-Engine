@@ -4390,6 +4390,30 @@ async function loadSandboxComparison() {
       deltaEl.style.background = '#f3f4f6';
       deltaEl.style.color = '#374151';
     }
+
+    if (data.web_vitals) {
+      const vOld = data.web_vitals.old;
+      const vNew = data.web_vitals.new;
+      const vDelta = data.web_vitals.delta;
+
+      document.getElementById('comp-vitals-old').textContent = vOld;
+      document.getElementById('comp-vitals-new').textContent = vNew;
+
+      const vDeltaEl = document.getElementById('comp-vitals-delta');
+      if (vDelta > 0) {
+        vDeltaEl.textContent = `+${vDelta} Points`;
+        vDeltaEl.style.background = '#dcfce7';
+        vDeltaEl.style.color = '#166534';
+      } else if (vDelta < 0) {
+        vDeltaEl.textContent = `${vDelta} Points`;
+        vDeltaEl.style.background = '#fee2e2';
+        vDeltaEl.style.color = '#991b1b';
+      } else {
+        vDeltaEl.textContent = 'No Change';
+        vDeltaEl.style.background = '#f3f4f6';
+        vDeltaEl.style.color = '#374151';
+      }
+    }
     
     // Set fields table
     const tbody = document.getElementById('comp-fields-tbody');
@@ -4618,6 +4642,27 @@ function renderPageComparison(data) {
     deltaEl.style.color = '#374151';
   }
 
+  if (data.web_vitals) {
+    document.getElementById('comp-vitals-old').textContent = data.web_vitals?.old || '--';
+    document.getElementById('comp-vitals-new').textContent = data.web_vitals?.new || '--';
+
+    const vDelta = (data.web_vitals?.new || 0) - (data.web_vitals?.old || 0);
+    const vDeltaEl = document.getElementById('comp-vitals-delta');
+    if (vDelta > 0) {
+      vDeltaEl.textContent = `+${vDelta} Points`;
+      vDeltaEl.style.background = '#dcfce7';
+      vDeltaEl.style.color = '#166534';
+    } else if (vDelta < 0) {
+      vDeltaEl.textContent = `${vDelta} Points`;
+      vDeltaEl.style.background = '#fee2e2';
+      vDeltaEl.style.color = '#991b1b';
+    } else {
+      vDeltaEl.textContent = 'No Change';
+      vDeltaEl.style.background = '#f3f4f6';
+      vDeltaEl.style.color = '#374151';
+    }
+  }
+
   const tbody = document.getElementById('comp-fields-tbody');
   tbody.innerHTML = '';
 
@@ -4672,176 +4717,103 @@ function renderPageComparison(data) {
 
 // --- AGENT SIDEBAR LOGIC ---
 let activeAgentRunId = null;
-let agentPollTimer = null;
 
-function initAgentTabs() {
-  const tabs = document.querySelectorAll('.chat-tab-btn');
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      tabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      
-      document.getElementById('chat-box').classList.add('hidden');
-      document.getElementById('agent-box').classList.add('hidden');
-      
-      const target = tab.getAttribute('data-target');
-      document.getElementById(target).classList.remove('hidden');
-      
-      if (target === 'agent-box') {
-        document.getElementById('agent-alert-dot').classList.add('hidden');
-      }
+// --- SAMPLE REPORT CARD ANIMATIONS ---
+function initSampleReportCard() {
+  const card = document.getElementById('sample-report-card');
+  if (!card) return;
+  
+  // 3D perspective tilt
+  const isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!isReducedMotion) {
+    card.addEventListener('mousemove', (e) => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      const tiltX = (y - centerY) / centerY * -4; // Max 4 deg
+      const tiltY = (x - centerX) / centerX * 4;
+      card.style.transform = `perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale3d(1.02, 1.02, 1.02)`;
     });
-  });
-  
-  const approveBtn = document.getElementById('agent-approve-btn');
-  if (approveBtn) approveBtn.addEventListener('click', async () => {
-    if (!activeAgentRunId) return;
-    try {
-      const resp = await fetch(`${API_BASE}/agent/runs/${activeAgentRunId}/approve`, { method: "POST" });
-      if (!resp.ok) throw new Error("Failed to approve");
-      document.getElementById('agent-action-group').classList.add('hidden');
-      pollAgentRun();
-    } catch (e) {
-      showToast(e.message, true);
-    }
-  });
-
-  const stopBtn = document.getElementById('agent-stop-btn');
-  if (stopBtn) stopBtn.addEventListener('click', async () => {
-    if (!activeAgentRunId) return;
-    try {
-      const resp = await fetch(`${API_BASE}/agent/runs/${activeAgentRunId}/stop`, { method: "POST" });
-      if (!resp.ok) throw new Error("Failed to stop");
-      document.getElementById('agent-action-group').classList.add('hidden');
-      pollAgentRun();
-    } catch (e) {
-      showToast(e.message, true);
-    }
-  });
-}
-
-function startAgentPoll(runId) {
-  activeAgentRunId = runId;
-  
-  // Show sidebar if hidden, and switch to Agent tab
-  const panel = document.getElementById("chat-panel");
-  if (panel.classList.contains("hidden")) {
-    panel.classList.remove("hidden");
-    chatUserClosed = false;
-  }
-  document.querySelector('.chat-tab-btn[data-target="agent-box"]').click();
-  
-  if (agentPollTimer) clearTimeout(agentPollTimer);
-  pollAgentRun();
-}
-
-async function pollAgentRun() {
-  if (!activeAgentRunId) return;
-  try {
-    const resp = await fetch(`${API_BASE}/agent/runs/${activeAgentRunId}/log`);
-    if (!resp.ok) return;
-    const data = await resp.json();
-    renderAgentState(data.run, data.episode);
     
-    if (["queued", "running"].includes(data.run.status)) {
-      agentPollTimer = setTimeout(pollAgentRun, 2000);
-    }
-  } catch (e) {
-    console.error("Agent poll error", e);
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
+    });
   }
-}
 
-function renderAgentState(run, episode) {
-  const badge = document.getElementById('agent-status-badge');
-  badge.textContent = run.status.toUpperCase();
-  
-  const alertDot = document.getElementById('agent-alert-dot');
-  const actionGroup = document.getElementById('agent-action-group');
-  
-  if (run.status === 'waiting_approval') {
-    badge.style.background = 'var(--status-broken)';
-    badge.style.color = 'white';
-    actionGroup.classList.remove('hidden');
-    const agentTab = document.querySelector('.chat-tab-btn[data-target="agent-box"]');
-    if (!agentTab.classList.contains('active')) alertDot.classList.remove('hidden');
-  } else {
-    actionGroup.classList.add('hidden');
-    if (run.status === 'running') {
-      badge.style.background = 'var(--accent)';
-      badge.style.color = 'white';
-    } else {
-      badge.style.background = 'var(--bg-elevated)';
-      badge.style.color = 'var(--text-muted)';
-    }
-  }
-  
-  const msgs = document.getElementById('agent-messages');
-  let html = '';
-  
-  if (episode && episode.steps && episode.steps.length > 0) {
-    episode.steps.forEach(step => {
-      let statusClass = step.ok ? 'done' : 'error';
-      if (!step.result && !step.error) statusClass = 'running';
-      
-      let stepHtml = `<div class="agent-step ${statusClass}">
-        <div class="agent-step-tool">${escapeHtml(step.tool)}</div>
-        <div class="agent-step-reason">${escapeHtml(step.reasoning)}</div>`;
+  // Animation on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        // Animate gauges
+        animateSampleValue('src-health-num', 0, 79, 1500);
+        const healthGauge = document.getElementById('src-health-gauge');
+        if (healthGauge) {
+          healthGauge.style.transition = 'stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1)';
+          healthGauge.style.strokeDashoffset = 251.2 * (1 - 79/100);
+        }
+
+        animateSampleValue('src-vitals-num', 0, 56, 1500);
+        const vitalsGauge = document.getElementById('src-vitals-gauge');
+        if (vitalsGauge) {
+          vitalsGauge.style.transition = 'stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1)';
+          vitalsGauge.style.strokeDashoffset = 251.2 * (1 - 56/100);
+        }
+
+        // Animate stats
+        animateSampleValue('src-pages-num', 0, 261, 1500);
+        animateSampleValue('src-issues-num', 0, 14, 1500);
+
+        // Animate progress bar
+        animateSampleValue('src-progress-pct', 0, 100, 1500, '%');
+        const progressBar = document.getElementById('src-progress-bar');
+        if (progressBar) {
+          progressBar.style.transition = 'width 1.5s cubic-bezier(0.4, 0, 0.2, 1)';
+          progressBar.style.width = '100%';
+        }
         
-      if (step.result) {
-        stepHtml += `<div class="agent-step-result">${escapeHtml(JSON.stringify(step.result, null, 2))}</div>`;
-      } else if (step.error) {
-        stepHtml += `<div class="agent-step-result" style="color:var(--status-broken)">${escapeHtml(step.error)}</div>`;
+        // Staggered entrance for tags
+        const tags = card.querySelectorAll('.stagger-item');
+        tags.forEach((tag, idx) => {
+          tag.style.opacity = '0';
+          tag.style.transform = 'translateY(10px)';
+          tag.style.transition = `all 0.5s cubic-bezier(0.4, 0, 0.2, 1) ${0.5 + idx * 0.15}s`;
+          setTimeout(() => {
+            tag.style.opacity = '1';
+            tag.style.transform = 'translateY(0)';
+          }, 50);
+        });
+
+        observer.unobserve(card);
       }
-      stepHtml += `</div>`;
-      html += stepHtml;
     });
-  } else {
-    html = `<div class="chat-message bot" style="opacity: 0.7;">No steps executed yet.</div>`;
-  }
-  
-  // Only update HTML if changed to prevent scrolling jump on every poll
-  if (msgs.innerHTML !== html) {
-    msgs.innerHTML = html;
-    msgs.scrollTop = msgs.scrollHeight;
-  }
+  }, { threshold: 0.3 });
+
+  observer.observe(card);
 }
 
-// Call init on load
-initAgentTabs();
-
-// --- Quick Agent Audit Button ---
-setTimeout(() => {
-  const btn = document.getElementById("quick-run-agent");
-  if (btn) {
-    btn.addEventListener("click", async () => {
-      if (!currentJobId) {
-        showToast("Open a site first to run the agent.", true);
-        return;
-      }
-      const jobUrl = document.getElementById("results-url")?.textContent || "https://example.com";
-      try {
-        btn.disabled = true;
-        btn.innerHTML = `<span>Starting...</span>`;
-        const resp = await fetch(`${API_BASE}/agent/runs`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            goal: "Audit the site, find issues, and prepare a plan.",
-            scope: "single_page",
-            urls: [jobUrl],
-            checkpoint_policy: "never"
-          })
-        });
-        if (!resp.ok) throw new Error("Failed to start agent");
-        const data = await resp.json();
-        showToast("Agent started!");
-        startAgentPoll(data.run_id);
-      } catch (e) {
-        showToast(e.message, true);
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<span>🤖 Run Agent Audit</span>`;
-      }
-    });
+function animateSampleValue(id, start, end, duration, suffix = '') {
+  const obj = document.getElementById(id);
+  if (!obj) return;
+  const isReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (isReducedMotion) {
+    obj.textContent = end + suffix;
+    return;
   }
-}, 1000); // delay to ensure element exists
+  let startTimestamp = null;
+  const step = (timestamp) => {
+    if (!startTimestamp) startTimestamp = timestamp;
+    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+    const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+    obj.textContent = Math.floor(easeOutQuart * (end - start) + start) + suffix;
+    if (progress < 1) {
+      window.requestAnimationFrame(step);
+    } else {
+      obj.textContent = end + suffix;
+    }
+  };
+  window.requestAnimationFrame(step);
+}
+
+document.addEventListener('DOMContentLoaded', initSampleReportCard);

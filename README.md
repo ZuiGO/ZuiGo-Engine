@@ -22,7 +22,7 @@ backend/
   main.py          FastAPI app, CORS, request logging, startup wiring
   config.py        env-driven settings (.env)
   db/              Mongo + Neo4j connections
-  routes/          analysis, pages, content, links, actions, reports, chat, graph, seo-insights
+  routes/          analysis, pages, content, links, actions, reports, chat, graph, seo-insights, sandbox
   services/        crawler, content_classifier, content_downloader, seo_analyzer,
                    pdf_extractor, content_extractor, graph_service, vector_service,
                    chat_service, se_ranking, serp_api, audit_service
@@ -103,6 +103,7 @@ See `.env.example`:
 - `GET /api/reports/{job_id}` · `GET /api/reports/{job_id}/download` — JSON + HTML report
 - `POST /api/chat` — RAG chat `{job_id, message}`
 - `GET /api/seo-insights/{job_id}` · `POST /api/seo-insights/refresh/{job_id}` · `POST /api/seo-insights/keyword-search` · `GET /api/seo-insights/{job_id}/suggested-keywords`
+- `GET /api/sandbox/comparison` · `GET /api/sandbox/suggestions` · `POST /api/sandbox/suggestions/{id}/apply` · `POST /api/sandbox/suggestions/{id}/rollback`
 
 ## Logging
 

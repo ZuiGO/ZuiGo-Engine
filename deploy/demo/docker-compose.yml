@@ -1,3 +1,5 @@
+name: zuigo-engine
+
 x-app: &app
   build:
     context: ../..
