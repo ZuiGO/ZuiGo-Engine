@@ -15,23 +15,28 @@ logger = get_logger("sitemap")
 
 TIMEOUT = 15
 MAX_SITEMAP_BYTES = 2_000_000
-USER_AGENT = "ZuiGO-Engine/1.0 sitemap-audit (+https://zuigo.ai)"
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
 
 SITEMAP_LOCATIONS = ("/sitemap.xml", "/sitemap_index.xml", "/sitemap-index.xml")
 
 
+import base64
+
 async def _fetch(url: str, auth: tuple | None = None) -> str | None:
+    headers = {"User-Agent": USER_AGENT}
+        
     try:
-        async with httpx.AsyncClient(timeout=TIMEOUT, follow_redirects=True, headers={"User-Agent": USER_AGENT}, auth=auth) as client:
+        async with httpx.AsyncClient(timeout=TIMEOUT, follow_redirects=True, headers=headers, auth=auth) as client:
             resp = await client.get(url)
         if resp.status_code != 200:
+            logger.warning("Sitemap fetch failed for %s with status %s", url, resp.status_code)
             return None
         if len(resp.content) > MAX_SITEMAP_BYTES:
             return None
         return resp.text
-    except Exception:
+    except Exception as e:
+        logger.error("Sitemap fetch exception: %s", e)
         return None
-
 
 async def _parse_sitemap_urls(xml_text: str, auth: tuple | None = None) -> list[str] | None:
     """Return URL list, or None if the body is not valid XML; [] if valid but empty."""
