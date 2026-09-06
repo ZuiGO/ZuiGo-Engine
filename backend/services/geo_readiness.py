@@ -79,14 +79,15 @@ def check_robots_text(text: str) -> dict:
     }
 
 
-async def check_geo_readiness(url: str, timeout: float = 15.0) -> dict:
+async def check_geo_readiness(url: str, timeout: float = 15.0, http_username: str | None = None, http_password: str | None = None) -> dict:
     """Fetch robots.txt for the site and run the AI-crawler readiness check."""
     from urllib.parse import urlparse
 
     parsed = urlparse(url)
     origin = f"{parsed.scheme}://{parsed.netloc}"
+    auth = (http_username, http_password) if http_username and http_password else None
     try:
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, auth=auth) as client:
             resp = await client.get(origin + "/robots.txt", headers={"User-Agent": USER_AGENT})
     except Exception as e:
         logger.warning("GEO robots.txt fetch failed for %s: %s", origin, e)

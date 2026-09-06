@@ -198,10 +198,10 @@ def _ai_extractability(html: str) -> dict:
     }
 
 
-async def _fetch_plain(url: str, user_agent: str) -> tuple[str | None, int | None]:
+async def _fetch_plain(url: str, user_agent: str, auth: tuple[str, str] | None = None) -> tuple[str | None, int | None]:
     import httpx
     try:
-        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=10, follow_redirects=True, auth=auth) as client:
             resp = await client.get(url, headers={"User-Agent": user_agent})
         if resp.status_code == 200:
             return resp.text, resp.status_code
@@ -210,10 +210,11 @@ async def _fetch_plain(url: str, user_agent: str) -> tuple[str | None, int | Non
         return None, None
 
 
-async def check_ai_visibility(job_id: str, target_url: str) -> dict:
+async def check_ai_visibility(job_id: str, target_url: str, http_username: str | None = None, http_password: str | None = None) -> dict:
     db = get_db()
     domain = target_url.split("//")[-1].split("/")[0]
-    robots_txt, robots_status = await _fetch_plain("https://" + domain + "/robots.txt", "ZuiGO-Engine/1.0 ai-visibility")
+    auth = (http_username, http_password) if http_username and http_password else None
+    robots_txt, robots_status = await _fetch_plain("https://" + domain + "/robots.txt", "ZuiGO-Engine/1.0 ai-visibility", auth=auth)
 
     robots_rules = _parse_robots(robots_txt)
     agent_rows = []
@@ -259,10 +260,10 @@ async def check_ai_visibility(job_id: str, target_url: str) -> dict:
                     ai_ext[key + "_pages"] += 1
             scanned += 1
 
-    llms_txt, llms_status = await _fetch_plain("https://" + domain + "/llms.txt", "ZuiGO-Engine/1.0 ai-visibility")
-    pricing_md, pricing_md_status = await _fetch_plain("https://" + domain + "/pricing.md", "ZuiGO-Engine/1.0 ai-visibility")
-    pricing_txt, pricing_txt_status = await _fetch_plain("https://" + domain + "/pricing.txt", "ZuiGO-Engine/1.0 ai-visibility")
-    okf_html, okf_status = await _fetch_plain("https://" + domain + "/okf/", "ZuiGO-Engine/1.0 ai-visibility")
+    llms_txt, llms_status = await _fetch_plain("https://" + domain + "/llms.txt", "ZuiGO-Engine/1.0 ai-visibility", auth=auth)
+    pricing_md, pricing_md_status = await _fetch_plain("https://" + domain + "/pricing.md", "ZuiGO-Engine/1.0 ai-visibility", auth=auth)
+    pricing_txt, pricing_txt_status = await _fetch_plain("https://" + domain + "/pricing.txt", "ZuiGO-Engine/1.0 ai-visibility", auth=auth)
+    okf_html, okf_status = await _fetch_plain("https://" + domain + "/okf/", "ZuiGO-Engine/1.0 ai-visibility", auth=auth)
     okf_present = okf_html is not None and len(okf_html.strip()) > 0
 
     total = max(len(pages), 1)
@@ -272,12 +273,12 @@ async def check_ai_visibility(job_id: str, target_url: str) -> dict:
         sitemap_ok = True
     else:
         from backend.services.sitemap import _robots_sitemap_urls, _fetch, _parse_sitemap_urls
-        candidates = await _robots_sitemap_urls("https://" + domain)
+        candidates = await _robots_sitemap_urls("https://" + domain, auth=auth)
         candidates.append("https://" + domain + "/sitemap.xml")
         for cand in candidates:
-            text = await _fetch(cand)
+            text = await _fetch(cand, auth=auth)
             if text:
-                urls = await _parse_sitemap_urls(text)
+                urls = await _parse_sitemap_urls(text, auth=auth)
                 if urls:
                     sitemap_ok = True
                     break

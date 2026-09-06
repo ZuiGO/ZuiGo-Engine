@@ -29,11 +29,11 @@ _chromium_slots = asyncio.Semaphore(CHROMIUM_SLOTS)
 REQUEST_TIMEOUT = 15
 
 
-async def _robots_delay(origin: str) -> float:
+async def _robots_delay(origin: str, auth: tuple[str, str] | None = None) -> float:
     """Crawl-delay from robots.txt (clamped), falling back to the configured default."""
     delay = settings.crawl_politeness_delay
     try:
-        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=10, follow_redirects=True, auth=auth) as client:
             resp = await client.get(origin + "/robots.txt", headers={"User-Agent": USER_AGENT})
         if resp.status_code == 200:
             rp = RobotFileParser()
@@ -78,17 +78,17 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
     unique_internal: set[str] = set()
     unique_external: set[str] = set()
     failed_urls: set[str] = set()
+    # Initialize auth early so it can be used for robots.txt and sitemap seeding
+    _httpx_auth = (http_username, http_password) if http_username and http_password else None
+    _pw_http_credentials = {"username": http_username, "password": http_password} if http_username and http_password else None
+
     lock = asyncio.Lock()
     semaphore = asyncio.Semaphore(concurrency)
     downloaded_urls = set()
     dedup_lock = asyncio.Lock()
-    delay = await _robots_delay(f"{parsed.scheme}://{parsed.netloc}")
+    delay = await _robots_delay(f"{parsed.scheme}://{parsed.netloc}", auth=_httpx_auth)
     gate = asyncio.Lock()
     logger.info("Crawl politeness job=%s delay=%.2fs", job_id, delay)
-
-    # Auth must be initialized before sitemap seeding so protected sitemaps can be fetched
-    _httpx_auth = (http_username, http_password) if http_username and http_password else None
-    _pw_http_credentials = {"username": http_username, "password": http_password} if http_username and http_password else None
 
     sitemap_urls: list[str] = []
     if seed_sitemap:
