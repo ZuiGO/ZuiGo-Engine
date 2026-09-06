@@ -86,17 +86,21 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
     gate = asyncio.Lock()
     logger.info("Crawl politeness job=%s delay=%.2fs", job_id, delay)
 
+    # Auth must be initialized before sitemap seeding so protected sitemaps can be fetched
+    _httpx_auth = (http_username, http_password) if http_username and http_password else None
+    _pw_http_credentials = {"username": http_username, "password": http_password} if http_username and http_password else None
+
     sitemap_urls: list[str] = []
     if seed_sitemap:
         try:
             from backend.services.sitemap import _robots_sitemap_urls, _fetch, _parse_sitemap_urls
-            candidates = await _robots_sitemap_urls(f"{parsed.scheme}://{parsed.netloc}")
+            candidates = await _robots_sitemap_urls(f"{parsed.scheme}://{parsed.netloc}", auth=_httpx_auth)
             candidates.append(f"{parsed.scheme}://{parsed.netloc}/sitemap.xml")
             for cand in candidates:
-                text = await _fetch(cand)
+                text = await _fetch(cand, auth=_httpx_auth)
                 if not text:
                     continue
-                urls = await _parse_sitemap_urls(text)
+                urls = await _parse_sitemap_urls(text, auth=_httpx_auth)
                 if not urls:
                     continue
                 for u in urls:
@@ -144,8 +148,7 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
             }}
         )
 
-    _httpx_auth = (http_username, http_password) if http_username and http_password else None
-    _pw_http_credentials = {"username": http_username, "password": http_password} if http_username and http_password else None
+    # _httpx_auth and _pw_http_credentials are already defined above (before sitemap seeding)
 
     async def fetch_page_text(url: str):
         """Return (html, status_code, headers, redirect_count) — HTTP-only mode."""

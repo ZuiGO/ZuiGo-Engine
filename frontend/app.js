@@ -107,6 +107,13 @@ form.addEventListener("submit", async e => {
     if (document.getElementById("auth-toggle")?.checked) {
       requestBody.http_username = (document.getElementById("http-username")?.value || "").trim();
       requestBody.http_password = (document.getElementById("http-password")?.value || "").trim();
+      localStorage.setItem("rankengine_http_username", requestBody.http_username);
+      localStorage.setItem("rankengine_http_password", requestBody.http_password);
+      localStorage.setItem("rankengine_auth_toggle", "true");
+    } else {
+      localStorage.removeItem("rankengine_http_username");
+      localStorage.removeItem("rankengine_http_password");
+      localStorage.setItem("rankengine_auth_toggle", "false");
     }
 
     const resp = await fetch(`${API_BASE}/analysis`, {
@@ -176,26 +183,24 @@ document.querySelectorAll(".tab").forEach(tab => {
       if (currentTab === "schedules") loadSchedules();
       if (currentTab === "logs") loadLogs();
       if (currentTab === "settings") loadSettings();
-    } else if (["sites", "schedules", "logs", "settings", "sandbox-comparison"].includes(currentTab)) {
+    } else if (["sites", "schedules", "logs", "settings"].includes(currentTab)) {
       if (currentTab === "sites") loadSites();
       if (currentTab === "schedules") loadSchedules();
       if (currentTab === "logs") loadLogs();
       if (currentTab === "settings") loadSettings();
-      if (currentTab === "sandbox-comparison") loadSandboxComparison();
-    }
+          }
   });
 });
 
 // Dashboard rails: context, quick nav, activity feed, docked chat
 const RAIL_TAB_LABELS = {
-  "sandbox-comparison": "Comparison", sites: "Sites", overview: "Overview", pages: "Pages", content: "Content",
+  sites: "Sites", overview: "Overview", pages: "Pages", content: "Content",
   links: "Links", actions: "SEO Actions", report: "Report", "seo-insights": "SEO Insights",
   competitors: "Competitors", quality: "Quality", schedules: "Schedules",
   logs: "Alerts", settings: "Settings",
 };
 const TAB_GUIDES = {
-  "sandbox-comparison": "Baseline vs Post-Apply visual snapshot.",
-  overview: "Site-level health: pages, content, actions, user flows, the execution summary and deltas vs previous analyses.",
+    overview: "Site-level health: pages, content, actions, user flows, the execution summary and deltas vs previous analyses.",
   sites: "Every analyzed site with health grades. Select two or more and compare them side by side.",
   pages: "All crawled pages with search, type filter and sorting.",
   content: "Every extracted content item (images, PDFs, video, documents...) with preview and the page it lives on.",
@@ -729,22 +734,16 @@ async function showResults(jobId, opts = {}) {
   loadTrends(jobId);
   
   if (summary) {
-    document.getElementById('tab-btn-sandbox-comparison').style.display = 'block';
-    const railBtn = document.querySelector('.rail-nav-btn[data-tab="sandbox-comparison"]');
-    if (railBtn) railBtn.style.display = 'flex';
     
     // We pass the whole job summary to the tab populator so it can setup sitewide or page-level
-    populateComparisonTab(jobId, summary);
+    
   } else {
-    document.getElementById('tab-btn-sandbox-comparison').style.display = 'none';
-    const railBtn = document.querySelector('.rail-nav-btn[data-tab="sandbox-comparison"]');
-    if (railBtn) railBtn.style.display = 'none';
   }
 
   // Switch to overview unless restoring a specific tab from the URL
   if (!opts.preserveTab) {
     if (summary.is_single_page_comparison) {
-      document.querySelector('.tab[data-tab="sandbox-comparison"]').click();
+      /* removed click */
     } else {
       document.querySelector('.tab[data-tab="overview"]').click();
     }
@@ -1934,7 +1933,8 @@ async function loadReport(jobId) {
       ${ov.estimated_organic_traffic !== undefined && ov.estimated_organic_traffic !== null ? `<div class="stat-card"><div class="stat-value">${ov.estimated_organic_traffic}</div><div class="stat-label">Organic Traffic</div></div>` : ""}
     </div>` : ""}
     ${Object.keys(report.page_type_breakdown || {}).length ? `
-    <h4 style="margin:20px 0 10px">Page Architecture (${report.total_pages} pages)</h4>
+    <h4 style="margin:20px 0 6px">Page Architecture (${report.total_pages} pages)</h4>
+    <p style="font-size:12px;color:var(--text-secondary);margin:0 0 10px">Pages are classified by URL pattern and content signals. <strong>Home</strong>: root path. <strong>Product</strong>: /product, /item, SKU patterns, or price/cart signals in body. <strong>Category</strong>: /category, /shop, /browse, pagination patterns, or filter/sort signals. <strong>Blog</strong>: /blog, /news, /article paths, or author/published signals. <strong>Corporate</strong>: /about, /contact, /team, /privacy. <strong>Support</strong>: /docs, /faq, /help. <strong>Conversion</strong>: /cart, /checkout. <strong>Landing</strong>: /lp, /offer, /promo. <strong>Other</strong>: anything that doesn't match above patterns.</p>
     <div class="content-types-grid">
       ${Object.entries(report.page_type_breakdown).map(([type, count]) => `
         <div class="content-type-card">
@@ -1942,6 +1942,7 @@ async function loadReport(jobId) {
         </div>
       `).join("")}
     </div>` : ""}
+
     ${(report.user_flows || []).length ? `
     <h4 style="margin:20px 0 10px">Top User Flows</h4>
     <table class="data-table">
@@ -2596,6 +2597,7 @@ function renderQuality(dup, sd, perf, geo, orphans, nested, decay, hl, uh, idx, 
           score: perfScore,
           verdict: `${perfScore}/100 average CWV score across ${perf.checked ?? 0} page(s) — field + lab data via PageSpeed Insights.`,
           detail: (perf.errors || []).slice(0, 3).join(" · ") || undefined,
+          evidence: `<div style="margin-top:8px;padding:8px;background:var(--bg-base);border-radius:var(--radius-sm);border:1px solid var(--border)"><p style="font-size:11px;color:var(--text-secondary);margin:0"><strong>How is this scored?</strong> The CWV score is the average of Google PageSpeed Insights lab scores across sampled pages. It reflects <strong>LCP</strong> (Largest Contentful Paint ≤2.5s = good), <strong>CLS</strong> (Cumulative Layout Shift ≤0.1 = good), and <strong>FID/INP</strong> (Interaction to Next Paint ≤200ms = good). Scores ≥70 pass, 40–69 need attention, &lt;40 fail.</p></div>`,
         };
       })()
     : perf && perf.errors && perf.errors.length
@@ -2697,11 +2699,16 @@ function renderQuality(dup, sd, perf, geo, orphans, nested, decay, hl, uh, idx, 
   cards.push(auditCard("Image Optimization", imgOpt && imgOpt.score !== undefined && imgOpt.score !== null
     ? (() => {
         const status = scoreFrom(imgScore) || "attention";
+        // Build evidence HTML from check-level URL lists
+        const evidenceHtml = (imgOpt.checks || []).filter(c => !c.passed && Array.isArray(c.evidence) && c.evidence.length).map(c =>
+          `<div style="margin-top:6px"><strong style="font-size:11px;color:var(--text-secondary)">${escapeHtml(c.label)} — sample URLs:</strong><ul style="margin:4px 0 0 16px;font-size:11px;color:var(--text-secondary);word-break:break-all">${c.evidence.slice(0,5).map(u => `<li>${escapeHtml(u)}</li>`).join("")}</ul></div>`
+        ).join("");
         return {
           status, label: status === "pass" ? "Pass" : status === "attention" ? "Attention" : "Fail",
           score: imgScore,
           verdict: `${imgOpt.total_images ?? 0} unique image(s) · ${imgOpt.modern_images ?? 0} WebP/AVIF · ${imgOpt.lazy_images ?? 0} lazy-loaded · ${imgOpt.missing_dimensions ?? 0} missing dimensions.`,
           checks: (imgOpt.checks || []).map(c => ({ passed: !!c.passed, label: c.label, detail: c.detail })),
+          evidence: evidenceHtml || undefined,
         };
       })()
     : { status: "na", label: "Not run", verdict: "Image-optimization audit not run for this job.", score: null }));
@@ -2753,6 +2760,11 @@ function renderQuality(dup, sd, perf, geo, orphans, nested, decay, hl, uh, idx, 
   const blChecked = links?.total_links_scanned ?? links?.links_checked ?? 0;
   const blBroken = links?.broken_link_count ?? 0;
   const blRate = blChecked ? Math.round(100 * blBroken / blChecked) : null;
+  // Build evidence sample of broken/unreachable URLs from the link health list if available
+  const brokenSampleUrls = (links?.broken_link_samples || []).slice(0, 8);
+  const brokenEvidenceHtml = brokenSampleUrls.length
+    ? `<div style="margin-top:6px"><strong style="font-size:11px;color:var(--text-secondary)">Sample broken URLs:</strong><ul style="margin:4px 0 0 16px;font-size:11px;color:var(--text-secondary);word-break:break-all">${brokenSampleUrls.map(u => `<li>${escapeHtml(u)}</li>`).join("")}</ul></div>`
+    : undefined;
   cards.push(auditCard("Broken Links", links && blChecked
     ? {
         status: blBroken === 0 ? "pass" : blRate > 10 ? "fail" : "attention",
@@ -2762,6 +2774,7 @@ function renderQuality(dup, sd, perf, geo, orphans, nested, decay, hl, uh, idx, 
           ? `All ${blChecked} checked links resolve.`
           : `${blBroken} of ${blChecked} checked link(s) are broken (${blRate}%) — fix or redirect them.`,
         detail: `${links.total_link_occurrences ?? blChecked} total link occurrences on the site`,
+        evidence: brokenEvidenceHtml,
       }
     : { status: "na", label: "Not checked", verdict: "Link health not checked for this job.", score: null }));
 
@@ -4048,7 +4061,7 @@ function linkifyText(text, maxLen) {
   return escapeHtml(label).replace(/(https?:\/\/[^\s<>"']+)/g, m => `<a href="${m}" target="_blank" rel="noopener noreferrer">${m}</a>`);
 }
 
-const VALID_TABS = new Set(["sites", "overview", "pages", "content", "links", "actions", "report", "seo-insights", "competitors", "quality", "schedules", "logs", "settings", "sandbox-approvals", "sandbox-comparison", "style-guide"]);
+const VALID_TABS = new Set(["sites", "overview", "pages", "content", "links", "actions", "report", "seo-insights", "competitors", "quality", "schedules", "logs", "settings", "sandbox-approvals", "style-guide"]);
 
 function parseHash() {
   const m = window.location.hash.match(/^#job\/([a-zA-Z0-9-]+)(?:\/([a-z-]+))?/);
@@ -4080,16 +4093,6 @@ async function restoreFromHash() {
       setDashboardVisible(true);
       switchTab("sandbox-approvals");
       loadSandboxApprovals();
-    } else if (tab === "sandbox-comparison") {
-      resultsSection.classList.remove("hidden");
-      inputSection.classList.add("hidden");
-      resultsUrl.textContent = "Sandbox Comparison";
-      resultsStatus.textContent = "Page-level before/after comparison for sandbox changes.";
-      document.body.classList.add("jobless");
-      setDashboardVisible(true);
-      const cmpTab = document.querySelector('.tab[data-tab="sandbox-comparison"]');
-      if (cmpTab) { cmpTab.style.display = 'block'; cmpTab.click(); }
-      loadSandboxComparison();
     } else {
       setDashboardVisible(false);
     }
@@ -4111,7 +4114,28 @@ async function restoreFromHash() {
 }
 
 window.addEventListener("hashchange", restoreFromHash);
-document.addEventListener("DOMContentLoaded", restoreFromHash);
+function initAuthFields() {
+  const toggle = localStorage.getItem("rankengine_auth_toggle") === "true";
+  const user = localStorage.getItem("rankengine_http_username") || "";
+  const pass = localStorage.getItem("rankengine_http_password") || "";
+
+  const toggleEl = document.getElementById("auth-toggle");
+  const userEl = document.getElementById("http-username");
+  const passEl = document.getElementById("http-password");
+  const fieldsEl = document.getElementById("auth-fields");
+
+  if (toggleEl && fieldsEl) {
+    toggleEl.checked = toggle;
+    fieldsEl.style.display = toggle ? 'flex' : 'none';
+  }
+  if (userEl) userEl.value = user;
+  if (passEl) passEl.value = pass;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  restoreFromHash();
+  initAuthFields();
+});
 
 function formatInline(s) {
   return s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
@@ -4383,145 +4407,7 @@ async function rollbackSandboxSuggestion(id, btnEl) {
   }
 }
 
-async function loadSandboxComparison() {
-  const loading = document.getElementById('sandbox-comparison-loading');
-  const error = document.getElementById('sandbox-comparison-error');
-  const content = document.getElementById('sandbox-comparison-content');
-  
-  loading.style.display = 'block';
-  error.classList.add('hidden');
-  content.classList.add('hidden');
 
-  const viewSelector = document.getElementById('comp-view-selector');
-  if (viewSelector) viewSelector.style.display = 'none';
-  const sitewideContent = document.getElementById('sandbox-sitewide-content');
-  if (sitewideContent) sitewideContent.classList.add('hidden');
-  
-  try {
-    const response = await fetch('/api/sandbox/comparison');
-    if (!response.ok) {
-      throw new Error(`Failed to load comparison: ${response.statusText}`);
-    }
-    const data = await response.json();
-    
-    // Set images
-    document.getElementById('comp-img-baseline').src = `data:image/jpeg;base64,${data.baseline_screenshot}`;
-    document.getElementById('comp-img-current').src = `data:image/jpeg;base64,${data.current_screenshot}`;
-    
-    // Set scores
-    const oldScore = data.seo_score.old;
-    const newScore = data.seo_score.new;
-    const delta = data.seo_score.delta;
-    
-    document.getElementById('comp-score-old').textContent = oldScore;
-    document.getElementById('comp-score-new').textContent = newScore;
-    
-    const deltaEl = document.getElementById('comp-score-delta');
-    if (delta > 0) {
-      deltaEl.textContent = `+${delta} Points`;
-      deltaEl.style.background = '#dcfce7';
-      deltaEl.style.color = '#166534';
-    } else if (delta < 0) {
-      deltaEl.textContent = `${delta} Points`;
-      deltaEl.style.background = '#fee2e2';
-      deltaEl.style.color = '#991b1b';
-    } else {
-      deltaEl.textContent = 'No Change';
-      deltaEl.style.background = '#f3f4f6';
-      deltaEl.style.color = '#374151';
-    }
-
-    if (data.web_vitals) {
-      const vOld = data.web_vitals.old;
-      const vNew = data.web_vitals.new;
-      const vDelta = data.web_vitals.delta;
-
-      document.getElementById('comp-vitals-old').textContent = vOld;
-      document.getElementById('comp-vitals-new').textContent = vNew;
-
-      const vDeltaEl = document.getElementById('comp-vitals-delta');
-      if (vDelta > 0) {
-        vDeltaEl.textContent = `+${vDelta} Points`;
-        vDeltaEl.style.background = '#dcfce7';
-        vDeltaEl.style.color = '#166534';
-      } else if (vDelta < 0) {
-        vDeltaEl.textContent = `${vDelta} Points`;
-        vDeltaEl.style.background = '#fee2e2';
-        vDeltaEl.style.color = '#991b1b';
-      } else {
-        vDeltaEl.textContent = 'No Change';
-        vDeltaEl.style.background = '#f3f4f6';
-        vDeltaEl.style.color = '#374151';
-      }
-    }
-    
-    // Set fields table
-    const tbody = document.getElementById('comp-fields-tbody');
-    tbody.innerHTML = '';
-    
-    for (const f of data.field_comparison) {
-      const tr = document.createElement('tr');
-      tr.style.borderBottom = '1px solid var(--border-color)';
-      
-      const badgeColor = f.is_changed ? '#dcfce7' : '#f3f4f6';
-      const badgeTextColor = f.is_changed ? '#166534' : '#374151';
-      const statusText = f.is_changed ? 'Changed' : 'Unchanged';
-      
-      const diffStyle = f.is_changed ? 'background:#dcfce7; padding:2px 4px; border-radius:4px;' : '';
-      
-      tr.innerHTML = `
-        <td style="padding: 12px 16px; font-weight: 500; text-transform: capitalize;">${f.field.replace('_', ' ')}</td>
-        <td style="padding: 12px 16px; color: var(--text-muted); font-size: 13px;">${escapeHtml(f.old_value || 'None')}</td>
-        <td style="padding: 12px 16px; font-size: 13px;"><span style="${diffStyle}">${escapeHtml(f.new_value || 'None')}</span></td>
-        <td style="padding: 12px 16px;">
-          <span style="background:${badgeColor}; color:${badgeTextColor}; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:500;">
-            ${statusText}
-          </span>
-        </td>
-      `;
-      tbody.appendChild(tr);
-    }
-    
-    // Set raw history
-    const historyContainer = document.getElementById('comp-raw-history');
-    historyContainer.innerHTML = '';
-    
-    if (data.raw_history.length === 0) {
-      historyContainer.innerHTML = '<div style="color:var(--text-muted); font-size:13px; text-align:center; padding: 24px;">No apply history found.</div>';
-    } else {
-      for (const h of data.raw_history) {
-        const item = document.createElement('div');
-        item.style.padding = '12px';
-        item.style.background = 'white';
-        item.style.border = '1px solid var(--border-color)';
-        item.style.borderRadius = '6px';
-        
-        const dateStr = h.timestamp ? new Date(h.timestamp).toLocaleString() : 'Unknown';
-        
-        item.innerHTML = `
-          <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">${dateStr}</div>
-          <div style="font-weight: 500; font-size: 14px; margin-bottom: 8px;">
-            ${h.action === 'applied' ? '✅ Applied' : '↩️ Rolled Back'} <span style="text-transform: capitalize;">${h.field.replace('_', ' ')}</span>
-          </div>
-          <div style="font-size: 13px; margin-bottom: 4px; font-family: monospace;">
-            Commit: ${h.commit_hash || 'None'}
-          </div>
-          ${h.preview_url ? `<div style="font-size: 12px; margin-top: 4px;"><a href="${h.preview_url}" target="_blank" style="color: var(--accent); text-decoration: none;">Vercel Preview ↗</a></div>` : ''}
-        `;
-        historyContainer.appendChild(item);
-      }
-    }
-    
-    loading.style.display = 'none';
-    content.classList.remove('hidden');
-    
-  } catch (err) {
-    console.error(err);
-    loading.style.display = 'none';
-    error.textContent = err.message;
-    error.classList.remove('hidden');
-  }
-}
 
 async function startSinglePageAnalysis(event) {
   event.preventDefault();
@@ -4553,6 +4439,13 @@ async function startSinglePageAnalysis(event) {
     if (document.getElementById("auth-toggle")?.checked) {
       requestBody.http_username = (document.getElementById("http-username")?.value || "").trim();
       requestBody.http_password = (document.getElementById("http-password")?.value || "").trim();
+      localStorage.setItem("rankengine_http_username", requestBody.http_username);
+      localStorage.setItem("rankengine_http_password", requestBody.http_password);
+      localStorage.setItem("rankengine_auth_toggle", "true");
+    } else {
+      localStorage.removeItem("rankengine_http_username");
+      localStorage.removeItem("rankengine_http_password");
+      localStorage.setItem("rankengine_auth_toggle", "false");
     }
 
     const res = await fetch(`${API_BASE}/analysis`, {

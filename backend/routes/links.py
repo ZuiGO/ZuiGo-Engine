@@ -17,12 +17,25 @@ async def get_link_summary(job_id: str):
 
     summary = job.get("summary") or {}
     occurrences = summary.get("total_link_occurrences") or summary.get("total_links", 0)
+
+    # Collect a sample of broken/unreachable URLs for the Quality audit card evidence
+    broken_samples: list[str] = []
+    async for lh in db.link_health.find(
+        {"job_id": job_id, "status": {"$in": ["broken", "unreachable"]}},
+        {"url": 1}
+    ).limit(10):
+        broken_samples.append(lh.get("url", ""))
+
     return {
         "total_links": summary.get("total_links", 0),
         "total_internal": summary.get("total_internal_links", 0),
         "total_external": summary.get("total_external_links", 0),
         "total_link_occurrences": occurrences,
+        "broken_link_count": summary.get("broken_link_count", 0),
+        "total_links_scanned": summary.get("total_links_scanned", summary.get("links_checked", 0)),
+        "broken_link_samples": broken_samples,
     }
+
 
 
 @router.get("/{job_id}/all")
