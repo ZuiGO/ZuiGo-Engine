@@ -424,10 +424,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           <span>Suggestions</span>
         </button>
-        <button class="tab" data-tab="sandbox-comparison" style="display: none;" id="tab-btn-sandbox-comparison">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
-          <span>Page-level Comparison</span>
-        </button>
+        
         <span class="tab-divider" role="separator"></span>
         <button class="tab" data-tab="report">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M8 12h8M8 16h5"/></svg>
@@ -589,24 +586,6 @@
             <button id="check-links-btn" class="btn-secondary" style="font-size:12px;padding:4px 10px">Run Check</button>
           </summary>
         <div id="link-health-summary" class="insights-card"></div>
-        <div class="table-controls-bar" style="margin-top:14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <select id="link-status-filter" class="filter-select" aria-label="Filter links by status">
-              <option value="all">All Link Statuses</option>
-              <option value="broken">Broken (4xx/5xx)</option>
-              <option value="redirect">Redirect (301/302)</option>
-              <option value="blocked">Blocked (401/403)</option>
-              <option value="unreachable">Unreachable</option>
-              <option value="ok">OK (200)</option>
-              <option value="external">External</option>
-              <option value="unchecked">Unchecked</option>
-            </select>
-            <span id="link-filter-count" class="count-label"></span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <button id="link-density-toggle-btn" class="btn-secondary" type="button" style="font-size:12px;padding:4px 10px" title="Toggle table row density">Compact View</button>
-          </div>
-        </div>
         <div id="link-health-issues" class="insights-card"></div>
         <details style="margin-top:10px">
           <summary style="cursor:pointer;font-size:13px;color:var(--text-secondary)">What are redirects and why is the count often 0?</summary>
@@ -955,104 +934,6 @@
             </div>
             <div class="service-error" id="smtp-test-error" style="margin-top:12px;display:none"></div>
             <div id="smtp-settings-hint" class="service-error" style="margin-top:14px;display:none"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="tab-content hidden" id="tab-sandbox-comparison">
-        <div class="section-header" style="display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <h2>Page-Level Comparison</h2>
-            <p class="section-desc">Review AI-optimized page snapshots and score impact</p>
-          </div>
-          <div style="display: flex; gap: 12px; align-items: center;">
-            <select id="comp-view-selector" class="filter-dropdown" style="width: 300px;">
-              <optgroup id="comp-page-options" label="Page-Level Comparisons">
-                <!-- Pages injected here -->
-              </optgroup>
-            </select>
-            <button id="comp-create-pr-btn" class="btn-primary" style="padding:8px 16px;">Create GitHub PR</button>
-          </div>
-        </div>
-        
-        <div id="sandbox-comparison-loading" class="empty-state">Loading comparison...</div>
-        <div id="sandbox-comparison-error" class="error-card hidden" style="background:#fee2e2;color:#991b1b;padding:12px;border-radius:6px;margin-bottom:16px;"></div>
-        
-        <div id="sandbox-comparison-content" class="hidden">
-          <div style="display: flex; gap: 24px; margin-bottom: 24px;">
-            <div style="flex: 2; display: flex; gap: 16px;">
-              <div style="flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
-                <h3 style="margin-top:0;margin-bottom:16px;font-size:16px;">SEO Score Impact</h3>
-                <div style="display:flex; align-items:center; gap: 16px;">
-                  <div style="text-align:center;">
-                    <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Baseline Score</div>
-                    <div id="comp-score-old" style="font-size:28px; font-weight:bold; color:var(--text);">--</div>
-                  </div>
-                  <div style="font-size:24px; color:var(--text-secondary);">→</div>
-                  <div style="text-align:center;">
-                    <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Current Score</div>
-                    <div id="comp-score-new" style="font-size:28px; font-weight:bold; color:var(--text);">--</div>
-                  </div>
-                  <div id="comp-score-delta" style="margin-left:auto; font-size:20px; font-weight:bold; padding: 6px 12px; border-radius: 20px;"></div>
-                </div>
-              </div>
-
-              <div style="flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
-                <h3 style="margin-top:0;margin-bottom:16px;font-size:16px;">Web Vitals Impact</h3>
-                <div style="display:flex; align-items:center; gap: 16px;">
-                  <div style="text-align:center;">
-                    <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Baseline</div>
-                    <div id="comp-vitals-old" style="font-size:28px; font-weight:bold; color:var(--text);">--</div>
-                  </div>
-                  <div style="font-size:24px; color:var(--text-secondary);">→</div>
-                  <div style="text-align:center;">
-                    <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Current</div>
-                    <div id="comp-vitals-new" style="font-size:28px; font-weight:bold; color:var(--text);">--</div>
-                  </div>
-                  <div id="comp-vitals-delta" style="margin-left:auto; font-size:20px; font-weight:bold; padding: 6px 12px; border-radius: 20px;"></div>
-                </div>
-              </div>
-            </div>
-            
-            <div style="flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; max-height: 140px; overflow-y: auto;">
-              <h3 style="margin-top:0; margin-bottom: 12px; font-size: 16px;">Raw History Trail</h3>
-              <div id="comp-raw-history" style="display: flex; flex-direction: column; gap: 8px;">
-              </div>
-            </div>
-          </div>
-          
-          <h3 style="margin-bottom: 12px; font-size: 16px;">Field-by-Field Analysis</h3>
-          <div style="background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
-            <table style="width: 100%; text-align: left; border-collapse: collapse;">
-              <thead>
-                <tr style="background: var(--bg-surface); border-bottom: 1px solid var(--border);">
-                  <th style="padding: 12px 16px; font-weight: 500;">Field</th>
-                  <th style="padding: 12px 16px; font-weight: 500;">Baseline Value</th>
-                  <th style="padding: 12px 16px; font-weight: 500;">Current Value</th>
-                  <th style="padding: 12px 16px; font-weight: 500; width: 100px;">Status</th>
-                </tr>
-              </thead>
-              <tbody id="comp-fields-tbody">
-              </tbody>
-            </table>
-          </div>
-          
-          <div style="margin-bottom: 24px;">
-            <h3 style="margin-bottom: 12px; font-size: 16px;">Visual Comparison</h3>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-              <div>
-                <div style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">Original Web Page</div>
-                <div style="border: 1px solid var(--border-light); border-radius: 8px; overflow: hidden; background: #fff;">
-                  <img id="comp-img-baseline" src="" alt="Original Web Page" style="width: 100%; display: block; height: auto;" />
-                </div>
-              </div>
-              <div>
-                <div style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">Applied Changes Web Page</div>
-                <div style="border: 1px solid var(--border-light); border-radius: 8px; overflow: hidden; background: #fff;">
-                  <img id="comp-img-current" src="" alt="Applied Changes Web Page" style="width: 100%; display: block; height: auto;" />
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

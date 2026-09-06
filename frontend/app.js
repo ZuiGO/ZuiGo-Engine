@@ -1337,14 +1337,22 @@ async function loadLinkHealth(jobId) {
     issuesEl.innerHTML = issues.length === 0
       ? '<p class="section-desc">No link issues found.</p>'
       : `<p class="section-desc">${issues.length} problematic unique link(s):</p>
-         <table class="data-table"><thead><tr><th>Status</th><th>Code</th><th>Length</th><th>URL</th><th>Linked From</th></tr></thead>
+         <div style="overflow-x:auto"><table class="data-table" style="table-layout:fixed;width:100%">
+           <colgroup>
+             <col style="width:80px">
+             <col style="width:60px">
+             <col style="width:60px">
+             <col style="width:auto">
+             <col style="width:30%">
+           </colgroup>
+           <thead><tr><th>Status</th><th>Code</th><th>Length</th><th>URL</th><th>Linked From</th></tr></thead>
          <tbody>${issues.map(i => `<tr>
            <td><span class="page-type-badge" style="background:#fee2e2;color:#b91c1c">${i.status}</span></td>
            <td>${i.status_code ?? "-"}</td>
            <td>${i.length_chars ?? "-"}</td>
-           <td class="page-url-cell" title="${i.url}">${linkify(i.url, 70)}</td>
-           <td style="font-size:12px;color:var(--text-secondary)">${(i.pages || []).slice(0, 3).map(pg => linkify(pg, 40)).join("<br>") || "-"}</td>
-         </tr>`).join("")}</tbody></table>`;
+           <td class="page-url-cell" title="${i.url}" style="word-break:break-all">${linkify(i.url, 70)}</td>
+           <td style="font-size:12px;color:var(--text-secondary);word-break:break-all">${(i.pages || []).slice(0, 3).map(pg => linkify(pg, 40)).join("<br>") || "-"}</td>
+         </tr>`).join("")}</tbody></table></div>`;
     loadAllLinks(jobId);
   } catch (err) {
     summaryEl.innerHTML = `<p class="section-desc">Error loading link health: ${escapeHtml(err.message)}</p>`;
@@ -2556,8 +2564,13 @@ function renderQuality(dup, sd, perf, geo, orphans, nested, decay, hl, uh, idx, 
           ? `<details class="audit-checks" style="margin-top:8px"><summary>Duplicate groups (${dupCount}) — pages with near-identical content</summary>${(dup.duplicate_groups || []).map(g => `
             <div class="audit-check" style="flex-direction:column;align-items:flex-start;gap:4px">
               <span class="check-mark issue">Duplicate</span>
-              <div style="font-size:12px;line-height:1.5">${(g.urls || []).slice(0, 5).map(u => linkify(u, 90)).join("<span style='color:var(--text-secondary)'> ↔ </span>")}${(g.urls || []).length > 5 ? ` <span class="count-label">+${g.urls.length - 5} more</span>` : ""}</div>
-              <span class="count-label">similarity: ${escapeHtml(g.similarity || "high")}</span>
+              <div style="font-size:12px;line-height:1.5;width:100%">
+                <ul style="margin:4px 0 0;padding-left:16px;">
+                  ${(g.urls || []).slice(0, 10).map(u => `<li><a href="${u}" target="_blank" style="color:var(--text);text-decoration:underline;word-break:break-all">${escapeHtml(u)}</a></li>`).join("")}
+                  ${(g.urls || []).length > 10 ? `<li><span class="count-label">+${g.urls.length - 10} more</span></li>` : ""}
+                </ul>
+              </div>
+              <span class="count-label" style="margin-top:4px">similarity: ${escapeHtml(g.similarity || "high")}</span>
             </div>`).join("")}</details>`
           : "";
         return {
@@ -3276,23 +3289,7 @@ function renderOnpage(op, error, source) {
   }
   if (op) {
     html += `<p class="source-note">Source: ${sourceLabel(source || op.source)}</p>`;
-    const total = op.images_total ?? null;
-    const missing = op.images_missing_alt ?? null;
-    const pagesWith = op.pages_with_images ?? null;
-    const altShare = (typeof total === "number" && typeof missing === "number")
-      ? (total > 0 ? Math.max(0, Math.round(100 * (1 - missing / total))) : 100)
-      : null;
-    const imgCards = [
-      ["Images (unique)", total],
-      ["Missing alt text", missing],
-      ["Alt text coverage", altShare != null ? altShare + "%" : null],
-      ["Pages with images", pagesWith],
-    ].map(([lbl, val]) => `<div class="insights-card">
-      <div class="insights-label">${escapeHtml(lbl)}</div>
-      <div class="insights-value">${val === null || val === undefined ? "N/A" : escapeHtml(String(val))}</div>
-    </div>`).join("");
-    html += `<h4 style="margin:0 0 8px">Image accessibility</h4>
-      <div class="insights-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">${imgCards}</div>`;
+    
     const rest = entries.filter(([k]) => !imageKeys.includes(k));
     if (rest.length) {
       html += `<h4 style="margin:16px 0 8px">Page signals</h4>
