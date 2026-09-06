@@ -193,6 +193,7 @@ async def fetch_performance(job_id: str, max_pages: int | None = None) -> dict:
     field_pages = set()
     lab_pages = set()
     field_avgs = {"lcp": [], "inp": [], "cls": []}
+    cwv_avgs = {"lcp": [], "inp": [], "cls": []}
     for r in results:
         if r.get("strategy") == "desktop":
             desktop_checked += 1
@@ -210,6 +211,11 @@ async def fetch_performance(job_id: str, max_pages: int | None = None) -> dict:
                     field_avgs[k].append(field[k])
         else:
             lab_pages.add(r.get("url"))
+            
+        cwv = r.get("cwv") or {}
+        for k in cwv_avgs:
+            if k in cwv and cwv[k] is not None:
+                cwv_avgs[k].append(cwv[k])
 
     summary = {
         "job_id": job_id,
@@ -229,6 +235,10 @@ async def fetch_performance(job_id: str, max_pages: int | None = None) -> dict:
         "field_avg": {
             k: round(sum(vs) / len(vs), 1) if vs else None
             for k, vs in field_avgs.items()
+        },
+        "cwv_avg": {
+            k: round(sum(vs) / len(vs), 3) if vs else None
+            for k, vs in cwv_avgs.items()
         },
     }
     await db.page_performance_summaries.update_one(

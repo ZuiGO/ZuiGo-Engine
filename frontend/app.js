@@ -2610,7 +2610,23 @@ function renderQuality(dup, sd, perf, geo, orphans, nested, decay, hl, uh, idx, 
           score: perfScore,
           verdict: `${perfScore}/100 average CWV score across ${perf.checked ?? 0} page(s) — field + lab data via PageSpeed Insights.`,
           detail: (perf.errors || []).slice(0, 3).join(" · ") || undefined,
-          evidence: `<div style="margin-top:8px;padding:8px;background:var(--bg-base);border-radius:var(--radius-sm);border:1px solid var(--border)"><p style="font-size:11px;color:var(--text-secondary);margin:0"><strong>How is this scored?</strong> The CWV score is the average of Google PageSpeed Insights lab scores across sampled pages. It reflects <strong>LCP</strong> (Largest Contentful Paint ≤2.5s = good), <strong>CLS</strong> (Cumulative Layout Shift ≤0.1 = good), and <strong>FID/INP</strong> (Interaction to Next Paint ≤200ms = good). Scores ≥70 pass, 40–69 need attention, &lt;40 fail.</p></div>`,
+          evidence: `
+            ${perf.cwv_avg ? `
+            <div style="display:flex;gap:12px;margin-top:8px;">
+              <div style="flex:1;background:var(--bg-base);border:1px solid var(--border);border-radius:6px;padding:8px;text-align:center;">
+                <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;margin-bottom:4px;">LCP</div>
+                <div style="font-size:16px;font-weight:600;color:${(perf.cwv_avg.lcp || 0) <= 2500 ? 'var(--success)' : (perf.cwv_avg.lcp || 0) <= 5000 ? 'var(--warning)' : 'var(--danger)'}">${perf.cwv_avg.lcp ? (perf.cwv_avg.lcp / 1000).toFixed(2) + 's' : '-'}</div>
+              </div>
+              <div style="flex:1;background:var(--bg-base);border:1px solid var(--border);border-radius:6px;padding:8px;text-align:center;">
+                <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;margin-bottom:4px;">INP</div>
+                <div style="font-size:16px;font-weight:600;color:${(perf.cwv_avg.inp || 0) <= 200 ? 'var(--success)' : (perf.cwv_avg.inp || 0) <= 500 ? 'var(--warning)' : 'var(--danger)'}">${perf.cwv_avg.inp ? Math.round(perf.cwv_avg.inp) + 'ms' : '-'}</div>
+              </div>
+              <div style="flex:1;background:var(--bg-base);border:1px solid var(--border);border-radius:6px;padding:8px;text-align:center;">
+                <div style="font-size:11px;color:var(--text-secondary);text-transform:uppercase;margin-bottom:4px;">CLS</div>
+                <div style="font-size:16px;font-weight:600;color:${(perf.cwv_avg.cls || 0) <= 0.1 ? 'var(--success)' : (perf.cwv_avg.cls || 0) <= 0.25 ? 'var(--warning)' : 'var(--danger)'}">${perf.cwv_avg.cls !== null && perf.cwv_avg.cls !== undefined ? Number(perf.cwv_avg.cls).toFixed(3) : '-'}</div>
+              </div>
+            </div>` : ''}
+            <div style="margin-top:8px;padding:8px;background:var(--bg-base);border-radius:var(--radius-sm);border:1px solid var(--border)"><p style="font-size:11px;color:var(--text-secondary);margin:0"><strong>How is this scored?</strong> The CWV score is the average of Google PageSpeed Insights lab scores across sampled pages. It reflects <strong>LCP</strong> (Largest Contentful Paint ≤2.5s = good), <strong>CLS</strong> (Cumulative Layout Shift ≤0.1 = good), and <strong>FID/INP</strong> (Interaction to Next Paint ≤200ms = good). Scores ≥70 pass, 40–69 need attention, &lt;40 fail.</p></div>`,
         };
       })()
     : perf && perf.errors && perf.errors.length
