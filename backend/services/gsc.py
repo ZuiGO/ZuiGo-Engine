@@ -23,6 +23,7 @@ AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 SITES_URL = "https://www.googleapis.com/webmasters/v3/sites"
 SEARCH_ANALYTICS_URL = "https://www.googleapis.com/webmasters/v3/sites/{site}/searchAnalytics/query"
+URL_INSPECTION_URL = "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect"
 
 
 async def get_gsc_config() -> dict:
@@ -206,6 +207,7 @@ async def fetch_gsc(domain: str, days: int = 28) -> dict | None:
         )
     q_rows = await _analytics_query(site, domain, ["query"], days)
     p_rows = await _analytics_query(site, domain, ["page"], days)
+    c_risks = await _cannibalization_query(site, domain, days)
     totals = _summarize(q_rows)
     await _save_credentials(domain, {**creds, "property": site})
     return {
@@ -227,6 +229,7 @@ async def fetch_gsc(domain: str, days: int = 28) -> dict | None:
              "position": r.get("position")}
             for r in p_rows
         ],
+        "cannibalization_risks": c_risks,
     }
 
 
@@ -248,3 +251,81 @@ async def gsc_status(domain: str) -> dict:
 async def disconnect(domain: str) -> None:
     db = get_db()
     await db.gsc_credentials.delete_many({"domain": domain})
+
+
+async def inspect_url(domain: str, url: str) -> dict:
+    creds = await _get_credentials(domain)
+    if not creds:
+        raise RuntimeError("GSC not connected for this domain")
+    site = creds.get("property")
+    if not site:
+        sites = await list_sites(domain)
+        site = _match_property(sites, domain)
+        if not site:
+            raise RuntimeError(f"Domain {domain} is not a verified Search Console property.")
+            
+    token = await _valid_access_token(domain)
+    if not token:
+         raise RuntimeError("GSC token invalid or expired")
+         
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            URL_INSPECTION_URL,
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "inspectionUrl": url,
+                "siteUrl": site,
+                "languageCode": "en-US"
+            }
+        )
+    if resp.status_code >= 400:
+        raise RuntimeError(f"GSC URL inspection failed (HTTP {resp.status_code}): {resp.text[:200]}")
+    return resp.json().get("inspectionResult") or {}
+
+
+async def _cannibalization_query(site: str, domain: str, days: int = 28) -> list[dict]:
+    token = await _valid_access_token(domain)
+    if not token:
+        raise RuntimeError("GSC not connected for this domain")
+    start = (datetime.utcnow() - timedelta(days=days - 1)).strftime("%Y-%m-%d")
+    end = datetime.utcnow().strftime("%Y-%m-%d")
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            SEARCH_ANALYTICS_URL.format(site=quote(site, safe="")),
+            headers={"Authorization": f"Bearer {token}"},
+            json={"startDate": start, "endDate": end, "dimensions": ["query", "page"], "rowLimit": 1000},
+        )
+    if resp.status_code >= 400:
+        raise RuntimeError(f"GSC search analytics failed (HTTP {resp.status_code}): {resp.text[:200]}")
+    
+    rows = resp.json().get("rows") or []
+    
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for r in rows:
+        if len(r.get("keys", [])) < 2:
+            continue
+        q = r["keys"][0]
+        p = r["keys"][1]
+        groups[q].append({
+            "page": p,
+            "clicks": r.get("clicks", 0),
+            "impressions": r.get("impressions", 0),
+            "position": r.get("position", 0),
+            "ctr": round(r.get("clicks", 0) / r.get("impressions", 1), 4) if r.get("impressions") else 0
+        })
+        
+    cannibalization = []
+    for q, pages in groups.items():
+        sig_pages = [p for p in pages if p["impressions"] >= 10]
+        if len(sig_pages) > 1:
+            sig_pages.sort(key=lambda x: x["impressions"], reverse=True)
+            if sig_pages[1]["impressions"] >= 50:
+                cannibalization.append({
+                    "query": q,
+                    "pages": sig_pages,
+                    "total_impressions": sum(p["impressions"] for p in sig_pages),
+                })
+                
+    cannibalization.sort(key=lambda x: x["total_impressions"], reverse=True)
+    return cannibalization

@@ -61,7 +61,7 @@ async def audit_image_optimization(job_id: str) -> dict:
                 continue
             seen.add(key)
             total_imgs += 1
-            if not (img.get("alt") or "").strip():
+            if not img.has_attr("alt"):
                 alt_missing += 1
             srcset = (img.get("srcset") or "").strip().lower()
             loading = (img.get("loading") or "").strip().lower()

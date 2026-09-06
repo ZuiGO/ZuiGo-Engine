@@ -20,9 +20,9 @@ USER_AGENT = "ZuiGO-Engine/1.0 sitemap-audit (+https://zuigo.ai)"
 SITEMAP_LOCATIONS = ("/sitemap.xml", "/sitemap_index.xml", "/sitemap-index.xml")
 
 
-async def _fetch(url: str) -> str | None:
+async def _fetch(url: str, auth: tuple | None = None) -> str | None:
     try:
-        async with httpx.AsyncClient(timeout=TIMEOUT, follow_redirects=True, headers={"User-Agent": USER_AGENT}) as client:
+        async with httpx.AsyncClient(timeout=TIMEOUT, follow_redirects=True, headers={"User-Agent": USER_AGENT}, auth=auth) as client:
             resp = await client.get(url)
         if resp.status_code != 200:
             return None
@@ -33,15 +33,15 @@ async def _fetch(url: str) -> str | None:
         return None
 
 
-async def _parse_sitemap_urls(xml_text: str) -> list[str] | None:
+async def _parse_sitemap_urls(xml_text: str, auth: tuple | None = None) -> list[str] | None:
     """Return URL list, or None if the body is not valid XML; [] if valid but empty."""
-    entries = await _fetch_sitemap_entries(xml_text)
+    entries = await _fetch_sitemap_entries(xml_text, auth=auth)
     if entries is None:
         return None
     return [e["loc"] for e in entries]
 
 
-async def _fetch_sitemap_entries(xml_text: str, _nested: set[str] | None = None) -> list[dict] | None:
+async def _fetch_sitemap_entries(xml_text: str, _nested: set[str] | None = None, auth: tuple | None = None) -> list[dict] | None:
     """Parse sitemap XML into [{loc, lastmod}]. Returns None if not valid XML.
 
     Nested sitemap indexes are expanded recursively (each child fetched once).
@@ -83,16 +83,16 @@ async def _fetch_sitemap_entries(xml_text: str, _nested: set[str] | None = None)
                 if loc in _nested:
                     continue
                 _nested.add(loc)
-                nested = await _fetch(loc)
+                nested = await _fetch(loc, auth)
                 if nested:
-                    entries.extend(await _fetch_sitemap_entries(nested, _nested) or [])
+                    entries.extend(await _fetch_sitemap_entries(nested, _nested, auth) or [])
     else:
         return None
     return entries
 
 
-async def _robots_sitemap_urls(origin: str) -> list[str]:
-    text = await _fetch(origin + "/robots.txt")
+async def _robots_sitemap_urls(origin: str, auth: tuple | None = None) -> list[str]:
+    text = await _fetch(origin + "/robots.txt", auth)
     if not text:
         return []
     out = []
@@ -105,12 +105,13 @@ async def _robots_sitemap_urls(origin: str) -> list[str]:
     return out
 
 
-async def audit_sitemap(job_id: str, target_url: str) -> dict:
+async def audit_sitemap(job_id: str, target_url: str, http_username: str | None = None, http_password: str | None = None) -> dict:
     db = get_db()
     parsed = target_url.split("//")[-1].split("/")[0]
     origin = "https://" + parsed
+    auth = (http_username, http_password) if http_username and http_password else None
 
-    candidates = await _robots_sitemap_urls(origin)
+    candidates = await _robots_sitemap_urls(origin, auth)
     for loc in SITEMAP_LOCATIONS:
         candidates.append(origin + loc)
 
@@ -127,11 +128,11 @@ async def audit_sitemap(job_id: str, target_url: str) -> dict:
         if cand in seen:
             continue
         seen.add(cand)
-        text = await _fetch(cand)
+        text = await _fetch(cand, auth)
         if text is None:
             results.append({"url": cand, "found": False})
             continue
-        entries = await _fetch_sitemap_entries(text)
+        entries = await _fetch_sitemap_entries(text, auth=auth)
         if entries is None:
             results.append({"url": cand, "found": True, "valid": False})
             continue

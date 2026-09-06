@@ -99,10 +99,20 @@ form.addEventListener("submit", async e => {
   showToast("Starting analysis...");
 
   try {
+    const requestBody = { 
+      url, 
+      email: (document.getElementById("email-input")?.value || "").trim() 
+    };
+    
+    if (document.getElementById("auth-toggle")?.checked) {
+      requestBody.http_username = (document.getElementById("http-username")?.value || "").trim();
+      requestBody.http_password = (document.getElementById("http-password")?.value || "").trim();
+    }
+
     const resp = await fetch(`${API_BASE}/analysis`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, email: (document.getElementById("email-input")?.value || "").trim() }),
+      body: JSON.stringify(requestBody),
     });
     const data = await resp.json();
     currentJobId = data.job_id;
@@ -1072,7 +1082,7 @@ async function loadPages(jobId) {
   table.innerHTML = `
     <table class="data-table">
       <thead><tr>
-        <th>URL</th><th>Type</th><th>Title</th><th>Words</th><th>Images</th><th>Schema</th><th>Depth</th><th>Indexable</th>
+        <th>URL</th><th>Type</th><th>Title</th><th>Words</th><th>Images</th><th>Schema</th><th>Depth</th><th>Indexable</th><th>GSC</th>
       </tr></thead>
       <tbody>${data.pages.map(p => `
         <tr>
@@ -1084,6 +1094,7 @@ async function loadPages(jobId) {
           <td>${yesNo(p.has_structured_data)}</td>
           <td>${p.click_depth ?? "-"}</td>
           <td>${yesNo(p.is_indexable)}</td>
+          <td><button class="btn btn-sm btn-outline" onclick="inspectGscUrl('${escapeHtml(p.url)}')">Inspect</button></td>
         </tr>
       `).join("")}</tbody>
     </table>
@@ -2848,6 +2859,35 @@ function renderGscData(gsc, error) {
     </div>`;
     const qs = gsc.queries || [];
     const ps = gsc.pages || [];
+    const risks = gsc.cannibalization_risks || [];
+    
+    if (risks.length) {
+      html += `<div class="insights-card issue" style="margin-top: 15px; border-left: 4px solid var(--status-broken);">
+        <h4 style="margin:0 0 10px; display:flex; align-items:center; gap:8px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.29 3.86 4.42 4.42a2 2 0 1 1-2.83 2.83l-4.42-4.42a2 2 0 1 1 2.83-2.83z"/><path d="m3.86 10.29 4.42 4.42a2 2 0 1 1-2.83 2.83l-4.42-4.42a2 2 0 1 1 2.83-2.83z"/><path d="M14 14l6-6"/><path d="M18 18l4-4"/></svg>
+          Keyword Cannibalization Detected!
+        </h4>
+        <p style="margin:0 0 10px; font-size:13px; color:var(--text-secondary);">The following queries have multiple pages competing for impressions, which may cannibalize rankings.</p>
+        <div style="overflow-x:auto">
+          <table class="data-table"><thead><tr><th>Query</th><th>Total Impressions</th><th>Competing Pages (Clicks / Imp)</th></tr></thead>
+          <tbody>${risks.map(r => `<tr>
+            <td style="font-weight: 500;">${escapeHtml(r.query)}</td>
+            <td>${r.total_impressions}</td>
+            <td>
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                ${r.pages.map(p => `
+                  <div style="font-size:12px; background:var(--bg-base); padding:4px 8px; border-radius:4px; border:1px solid var(--border-color);">
+                    <a href="${escapeHtml(p.page)}" target="_blank" style="text-decoration:none; color:var(--text-primary);">${linkify(p.page, 55)}</a>
+                    <span style="color:var(--text-secondary); margin-left:6px;">(${p.clicks} clicks / ${p.impressions} imp)</span>
+                  </div>
+                `).join("")}
+              </div>
+            </td>
+          </tr>`).join("")}</tbody></table>
+        </div>
+      </div>`;
+    }
+
     if (qs.length) {
       html += `<h4 style="margin:14px 0 6px">Top Queries</h4><div style="overflow-x:auto">
         <table class="data-table"><thead><tr><th>Query</th><th>Clicks</th><th>Impressions</th><th>CTR</th><th>Position</th></tr></thead>
@@ -4503,15 +4543,22 @@ async function startSinglePageAnalysis(event) {
   showToast("Starting single page analysis...");
 
   try {
+    const requestBody = { 
+      url: urlInput, 
+      is_single_page_comparison: true, 
+      max_pages: 1,
+      email: (document.getElementById("email-input")?.value || "").trim() 
+    };
+
+    if (document.getElementById("auth-toggle")?.checked) {
+      requestBody.http_username = (document.getElementById("http-username")?.value || "").trim();
+      requestBody.http_password = (document.getElementById("http-password")?.value || "").trim();
+    }
+
     const res = await fetch(`${API_BASE}/analysis`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        url: urlInput, 
-        is_single_page_comparison: true, 
-        max_pages: 1,
-        email: (document.getElementById("email-input")?.value || "").trim() 
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!res.ok) throw new Error("Failed to start analysis");
@@ -4814,6 +4861,49 @@ function animateSampleValue(id, start, end, duration, suffix = '') {
     }
   };
   window.requestAnimationFrame(step);
+}
+
+async function inspectGscUrl(url) {
+  if (!currentJobId) return;
+  showModal("GSC URL Inspection", '<div class="loading">Fetching live index status from Google...</div>');
+  try {
+    const resp = await fetch(`${API_BASE}/gsc/${currentJobId}/inspect?url=${encodeURIComponent(url)}`);
+    const data = await resp.json();
+    if (!resp.ok) {
+      showModal("GSC URL Inspection Error", `<div class="insights-card issue">${escapeHtml(data.detail || "Failed to inspect URL")}</div>`);
+      return;
+    }
+    
+    const inspection = data.inspection || {};
+    const indexResult = inspection.indexStatusResult || {};
+    const mobileResult = inspection.mobileUsabilityResult || {};
+    
+    const coverageState = escapeHtml(indexResult.coverageState || "Unknown");
+    const indexingState = escapeHtml(indexResult.indexingState || "Unknown");
+    const robotsTxtState = escapeHtml(indexResult.robotsTxtState || "Unknown");
+    const sitemap = (indexResult.sitemap || []).join(", ") || "None";
+    const googleCanonical = escapeHtml(indexResult.googleCanonical || "None");
+    const mobileState = escapeHtml(mobileResult.verdict || "Unknown");
+    
+    const html = `
+      <div class="insights-card">
+        <h4>URL: <a href="${escapeHtml(url)}" target="_blank">${linkify(url, 60)}</a></h4>
+        <table class="data-table" style="margin-top: 15px;">
+          <tbody>
+            <tr><td style="font-weight: 500;">Coverage State</td><td>${coverageState}</td></tr>
+            <tr><td style="font-weight: 500;">Indexing State</td><td>${indexingState}</td></tr>
+            <tr><td style="font-weight: 500;">Robots.txt State</td><td>${robotsTxtState}</td></tr>
+            <tr><td style="font-weight: 500;">Submitted Sitemaps</td><td>${sitemap}</td></tr>
+            <tr><td style="font-weight: 500;">Google Canonical</td><td>${googleCanonical}</td></tr>
+            <tr><td style="font-weight: 500;">Mobile Usability</td><td>${mobileState === 'PASS' ? '<span class="ok">PASS</span>' : (mobileState === 'FAIL' ? '<span class="issue">FAIL</span>' : mobileState)}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+    showModal("GSC URL Inspection", html);
+  } catch (err) {
+    showModal("GSC URL Inspection Error", `<div class="insights-card issue">Network error fetching inspection data.</div>`);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', initSampleReportCard);

@@ -98,8 +98,9 @@ async def detect_user_flows(job_id: str) -> int:
     except Exception as e:
         logger.warning("User flow graph write warning job=%s: %s", job_id, e)
 
-    logger.info("User flows detected job=%s flows=%s", job_id, len(flows))
-    return len(flows)
+    unique_targets = len(set(f["target_url"] for f in flows))
+    logger.info("User flows detected job=%s distinct_targets=%s (raw_flows=%s)", job_id, unique_targets, len(flows))
+    return unique_targets
 
 
 async def _store_flows_in_graph(job_id: str, flows: list):

@@ -157,9 +157,13 @@ class TestFetchParsing:
 
         async def fake_query(site, domain, dim, days):
             return SAMPLE_ROWS
-
+            
+        async def fake_cannib(site, domain, days):
+            return []
+    
         monkeypatch.setattr(gsc, "list_sites", fake_list)
         monkeypatch.setattr(gsc, "_analytics_query", fake_query)
+        monkeypatch.setattr(gsc, "_cannibalization_query", fake_cannib)
         data = await gsc.fetch_gsc("example.com")
         assert data["property"] == "sc-domain:example.com"
         assert data["clicks"] == 160
@@ -244,3 +248,53 @@ class TestSettingsRoute:
         stored = fake_db._stores["app_settings"]["gsc"]
         assert stored["client_secret"] == "secret-1"
         assert stored["client_id"] == "client-1"
+
+@pytest.mark.asyncio
+class TestInspectionAndCannibalization:
+    async def test_inspect_url(self, monkeypatch):
+        async def fake_creds(domain):
+            return {"domain": domain, "property": "sc-domain:example.com"}
+        monkeypatch.setattr(gsc, "_get_credentials", fake_creds)
+        
+        async def fake_token(domain):
+            return "tok"
+        monkeypatch.setattr(gsc, "_valid_access_token", fake_token)
+        
+        class FakeResp:
+            status_code = 200
+            def json(self):
+                return {"inspectionResult": {"indexStatusResult": {"coverageState": "Indexed, not submitted in sitemap"}}}
+        
+        async def fake_post(*args, **kwargs):
+            return FakeResp()
+            
+        monkeypatch.setattr("httpx.AsyncClient.post", fake_post)
+        
+        res = await gsc.inspect_url("example.com", "https://example.com/foo")
+        assert res["indexStatusResult"]["coverageState"] == "Indexed, not submitted in sitemap"
+
+    async def test_cannibalization_query(self, monkeypatch):
+        async def fake_token(domain):
+            return "tok"
+        monkeypatch.setattr(gsc, "_valid_access_token", fake_token)
+        
+        class FakeResp:
+            status_code = 200
+            def json(self):
+                return {"rows": [
+                    {"keys": ["query1", "pageA"], "impressions": 100},
+                    {"keys": ["query1", "pageB"], "impressions": 60},
+                    {"keys": ["query2", "pageC"], "impressions": 100},
+                    {"keys": ["query2", "pageD"], "impressions": 5},
+                ]}
+                
+        async def fake_post(*args, **kwargs):
+            return FakeResp()
+            
+        monkeypatch.setattr("httpx.AsyncClient.post", fake_post)
+        
+        c = await gsc._cannibalization_query("sc-domain:example.com", "example.com")
+        assert len(c) == 1
+        assert c[0]["query"] == "query1"
+        assert len(c[0]["pages"]) == 2
+        assert c[0]["total_impressions"] == 160

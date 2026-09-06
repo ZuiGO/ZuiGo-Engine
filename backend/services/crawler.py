@@ -63,7 +63,7 @@ async def _goto_polite(page, url: str, gate: asyncio.Lock, delay: float, timeout
     return resp
 
 
-async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None, concurrency: int = 5, seed_sitemap: bool = False, unlimited: bool = False, mobile: bool = True, use_playwright: bool = True):
+async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None, concurrency: int = 5, seed_sitemap: bool = False, unlimited: bool = False, mobile: bool = True, use_playwright: bool = True, http_username: str | None = None, http_password: str | None = None):
     db = get_db()
     target_url = normalize_url(target_url) or target_url
     parsed = urlparse(target_url)
@@ -144,12 +144,15 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
             }}
         )
 
+    _httpx_auth = (http_username, http_password) if http_username and http_password else None
+    _pw_http_credentials = {"username": http_username, "password": http_password} if http_username and http_password else None
+
     async def fetch_page_text(url: str):
         """Return (html, status_code, headers, redirect_count) — HTTP-only mode."""
         async with gate:
             await asyncio.sleep(delay)
         try:
-            async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, follow_redirects=True) as client:
+            async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, follow_redirects=True, auth=_httpx_auth) as client:
                 r = await client.get(url, headers={"User-Agent": USER_AGENT})
             return r.text, r.status_code, r.headers, len(r.history)
         except Exception as e:
@@ -157,7 +160,7 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
             failed_urls.add(url)
             return None
 
-    async def crawl_and_process(browser, url: str):
+    async def crawl_and_process(browser, url: str, context=None):
         nonlocal total_internal, total_external
         async with semaphore:
             try:
@@ -167,7 +170,7 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
                         return None
                     html, status_code, headers, redirect_count = fetched
                 else:
-                    page = await browser.new_page()
+                    page = await context.new_page()
                     resp = None
                     try:
                         await page.set_extra_http_headers({"User-Agent": USER_AGENT})
@@ -213,7 +216,7 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
 
                 images = soup.find_all("img")
                 image_count = len(images)
-                images_missing_alt = sum(1 for img in images if not img.get("alt"))
+                images_missing_alt = sum(1 for img in images if not img.has_attr("alt"))
 
                 internal_urls = []
                 external_urls = []
@@ -335,9 +338,14 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
     pw_cm = async_playwright() if use_playwright else nullcontext(None)
     async with pw_cm as pw:
         browser = None
+        context = None
         if use_playwright:
             async with _chromium_slots:
                 browser = await pw.chromium.launch(headless=True, args=["--no-sandbox"])
+            ctx_opts = {}
+            if _pw_http_credentials:
+                ctx_opts["http_credentials"] = _pw_http_credentials
+            context = await browser.new_context(**ctx_opts)
 
         crawled = 0
         while queue and crawled < ceiling:
@@ -354,7 +362,7 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
                     urls_to_crawl.append(u)
 
             for u in urls_to_crawl:
-                tasks.append(crawl_and_process(browser, u))
+                tasks.append(crawl_and_process(browser, u, context=context))
 
             results = await asyncio.gather(*tasks)
 
@@ -395,6 +403,8 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
 
                     await update_progress(crawled, f"Crawled {urlparse(result['url']).path or '/'}")
 
+        if context is not None:
+            await context.close()
         if browser is not None:
             await browser.close()
 
@@ -405,6 +415,10 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
                 async with _chromium_slots:
                     mobile_browser = await pw.chromium.launch(headless=True, args=["--no-sandbox"])
                     iphone = pw.devices["iPhone 13"]
+                    mobile_ctx_opts = {**iphone}
+                    if _pw_http_credentials:
+                        mobile_ctx_opts["http_credentials"] = _pw_http_credentials
+                    mobile_context = await mobile_browser.new_context(**mobile_ctx_opts)
                     mobile_sem = asyncio.Semaphore(settings.mobile_crawl_concurrency)
                     mobile_lock = asyncio.Lock()
 
@@ -412,7 +426,7 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
                         nonlocal mobile_ok
                         async with mobile_sem:
                             try:
-                                page = await mobile_browser.new_page(**iphone)
+                                page = await mobile_context.new_page()
                                 await page.set_extra_http_headers({"User-Agent": USER_AGENT})
                                 resp = await _goto_polite(page, url, gate, delay)
                                 mhtml = await page.content()
@@ -439,6 +453,7 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
                         crawled_pages, key=lambda p: (p.get("click_depth", 0), p.get("url", ""))
                     )[: settings.mobile_sample_pages]
                     await asyncio.gather(*[mobile_pass(p["url"]) for p in sample_pages])
+                    await mobile_context.close()
                     await mobile_browser.close()
             except Exception as mb_err:
                 logger.error("Mobile crawl pass failed job=%s: %s", job_id, mb_err)

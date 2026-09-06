@@ -125,3 +125,18 @@ async def disconnect(job_id: str):
             },
         )
     return {"ok": True, "domain": domain, "disconnected": True}
+
+
+@router.get("/{job_id}/inspect")
+async def inspect(job_id: str, url: str):
+    db = get_db()
+    job = await db.analysis_jobs.find_one({"_id": job_id})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    domain = _domain_from_url(job.get("url", ""))
+    
+    try:
+        data = await gsc.inspect_url(domain, url)
+        return {"ok": True, "url": url, "inspection": data}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e

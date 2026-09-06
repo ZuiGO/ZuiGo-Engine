@@ -85,6 +85,16 @@
         <div class="input-group" style="margin-top:10px">
           <input type="email" id="email-input" placeholder="you@example.com (optional — get the PDF report by email)" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text);flex:1">
         </div>
+        <div class="input-group" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
+          <label style="display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-secondary); cursor:pointer;">
+            <input type="checkbox" id="auth-toggle" onchange="document.getElementById('auth-fields').style.display = this.checked ? 'flex' : 'none'">
+            Site requires HTTP Basic Authentication
+          </label>
+          <div id="auth-fields" style="display:none; gap:8px;">
+            <input type="text" id="http-username" placeholder="Username" autocomplete="off" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text);flex:1">
+            <input type="password" id="http-password" placeholder="Password" autocomplete="off" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text);flex:1">
+          </div>
+        </div>
         <div class="examples-row">
           <span class="examples-label">Try:</span>
           <button type="button" class="example-chip" data-url="https://example.com">example.com</button>

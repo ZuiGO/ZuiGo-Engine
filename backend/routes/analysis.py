@@ -24,6 +24,8 @@ class AnalyzeRequest(BaseModel):
     max_pages: int = 50
     email: str = ""
     is_single_page_comparison: bool = False
+    http_username: str | None = None
+    http_password: str | None = None
 
 
 class AnalyzeResponse(BaseModel):
@@ -58,7 +60,16 @@ async def start_analysis(req: AnalyzeRequest):
         "is_single_page_comparison": req.is_single_page_comparison,
     })
 
-    await run_or_fallback("analyze_job", run_analysis_pipeline, job_id, url, req.max_pages, req.is_single_page_comparison)
+    await run_or_fallback(
+        "analyze_job", 
+        run_analysis_pipeline, 
+        job_id, 
+        url, 
+        req.max_pages, 
+        req.is_single_page_comparison,
+        req.http_username,
+        req.http_password
+    )
     await log_audit("analysis_started", job_id, {"url": url, "max_pages": req.max_pages, "single_page": req.is_single_page_comparison})
 
     return {"job_id": job_id, "status": "queued", "url": url, "max_pages": req.max_pages}
@@ -109,7 +120,7 @@ async def run_competitor_pipeline(target_job_id: str, competitors: list[str]):
         await _mark_errors(str(e))
 
 
-async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_single_page_comparison: bool = False):
+async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_single_page_comparison: bool = False, http_username: str | None = None, http_password: str | None = None):
     db = get_db()
     logger.info("Analysis started job=%s url=%s max_pages=%s", job_id, url, max_pages)
 
@@ -126,7 +137,9 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_s
             url, 
             max_pages, 
             seed_sitemap=not is_single_page_comparison, 
-            unlimited=not is_single_page_comparison
+            unlimited=not is_single_page_comparison,
+            http_username=http_username,
+            http_password=http_password
         )
         if not summary:
             raise Exception("Crawl returned no results")
@@ -220,7 +233,7 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_s
             if is_single_page_comparison: return {}
             await _progress("Auditing sitemap...")
             from backend.services.sitemap import audit_sitemap
-            return await audit_sitemap(job_id, url)
+            return await audit_sitemap(job_id, url, http_username, http_password)
 
         async def _ai_visibility():
             if is_single_page_comparison: return {}
@@ -579,7 +592,8 @@ async def get_job_summary(job_id: str):
     async for row in page_type_cursor:
         page_type_breakdown[row["_id"]] = row["count"]
 
-    user_flow_count = await db.user_flows.count_documents({"job_id": job_id})
+    unique_flows = await db.user_flows.distinct("target_url", {"job_id": job_id})
+    user_flow_count = len(unique_flows)
 
     return {
         "job_id": job_id,

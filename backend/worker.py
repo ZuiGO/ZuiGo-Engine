@@ -17,9 +17,9 @@ async def shutdown(ctx):
     await close_db()
 
 
-async def analyze_job(ctx, job_id: str, url: str, max_pages: int = 50, is_single_page_comparison: bool = False):
+async def analyze_job(ctx, job_id: str, url: str, max_pages: int = 50, is_single_page_comparison: bool = False, http_username: str | None = None, http_password: str | None = None):
     from backend.routes.analysis import run_analysis_pipeline
-    await run_analysis_pipeline(job_id, url, max_pages, is_single_page_comparison)
+    await run_analysis_pipeline(job_id, url, max_pages, is_single_page_comparison, http_username, http_password)
 
 
 async def approve_all_batch(ctx, job_id: str):

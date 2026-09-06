@@ -171,7 +171,8 @@ async def _overview_context(job_id: str) -> str:
     async for row in cursor:
         page_types[row["_id"]] = row["count"]
 
-    flows = await db.user_flows.count_documents({"job_id": job_id})
+    unique_flows = await db.user_flows.distinct("target_url", {"job_id": job_id})
+    flows = len(unique_flows)
     content_types = {}
     cursor = db.content_items.aggregate([
         {"$match": {"job_id": job_id}},
