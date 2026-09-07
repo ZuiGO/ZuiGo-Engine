@@ -228,6 +228,8 @@ async def _report_html(job_id: str):
             "status": a.get("status", "pending"),
         })
 
+    perf_summary = await db.page_performance_summaries.find_one({"job_id": job_id}) or {}
+
     health = await get_site_health(job_id)
     if isinstance(health, dict):
         health.pop("_id", None)
@@ -268,6 +270,15 @@ async def _report_html(job_id: str):
     if not issues and isinstance(health, dict):
         issues = health.get("issues") or []
 
+    cwv_score_disp = str(hm.get("avg_cwv_score")) if hm.get("avg_cwv_score") is not None else "N/A"
+    if perf_summary.get("cwv_avg"):
+        c = perf_summary["cwv_avg"]
+        cwv_score_disp += " (LCP:%ss INP:%sms CLS:%s)" % (
+            str(round(c.get("lcp", 0) / 1000, 2)) if c.get("lcp") else "-",
+            str(round(c.get("inp", 0))) if c.get("inp") else "-",
+            str(c.get("cls")) if c.get("cls") is not None else "-"
+        )
+
     kpis = "".join([
         _kpi("Pages Crawled", page_count),
         _kpi("Content Items", content_count),
@@ -275,7 +286,7 @@ async def _report_html(job_id: str):
         _kpi("Broken", hm.get("broken_links", 0)),
         _kpi("Health Score", "%s/100" % score if score is not None else "N/A"),
         _kpi("Grade", grade or "N/A"),
-        _kpi("Avg CWV", hm.get("avg_cwv_score") if hm.get("avg_cwv_score") is not None else "N/A"),
+        _kpi("Avg CWV", cwv_score_disp),
         _kpi("Organic Traffic", overview.get("estimated_organic_traffic")
              if overview.get("estimated_organic_traffic") is not None else "N/A"),
         _kpi("Organic Keywords", overview.get("organic_keywords_count")

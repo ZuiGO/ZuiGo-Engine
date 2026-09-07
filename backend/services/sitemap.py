@@ -38,15 +38,15 @@ async def _fetch(url: str, auth: tuple | None = None) -> str | None:
         logger.error("Sitemap fetch exception: %s", e)
         return None
 
-async def _parse_sitemap_urls(xml_text: str, auth: tuple | None = None) -> list[str] | None:
+async def _parse_sitemap_urls(xml_text: str, auth: tuple | None = None, origin: str | None = None) -> list[str] | None:
     """Return URL list, or None if the body is not valid XML; [] if valid but empty."""
-    entries = await _fetch_sitemap_entries(xml_text, auth=auth)
+    entries = await _fetch_sitemap_entries(xml_text, auth=auth, origin=origin)
     if entries is None:
         return None
     return [e["loc"] for e in entries]
 
 
-async def _fetch_sitemap_entries(xml_text: str, _nested: set[str] | None = None, auth: tuple | None = None) -> list[dict] | None:
+async def _fetch_sitemap_entries(xml_text: str, _nested: set[str] | None = None, auth: tuple | None = None, origin: str | None = None) -> list[dict] | None:
     """Parse sitemap XML into [{loc, lastmod}]. Returns None if not valid XML.
 
     Nested sitemap indexes are expanded recursively (each child fetched once).
@@ -85,12 +85,20 @@ async def _fetch_sitemap_entries(xml_text: str, _nested: set[str] | None = None,
                 if not loc:
                     continue
                 loc = loc.strip()
+                if origin:
+                    import urllib.parse
+                    o = urllib.parse.urlparse(loc)
+                    req_o = urllib.parse.urlparse(origin)
+                    if o.netloc != req_o.netloc:
+                        # Rewrite hardcoded production domains to the scanned origin (common in staging sites)
+                        loc = urllib.parse.urlunparse((req_o.scheme or o.scheme, req_o.netloc, o.path, o.params, o.query, o.fragment))
+                
                 if loc in _nested:
                     continue
                 _nested.add(loc)
                 nested = await _fetch(loc, auth)
                 if nested:
-                    entries.extend(await _fetch_sitemap_entries(nested, _nested, auth) or [])
+                    entries.extend(await _fetch_sitemap_entries(nested, _nested, auth, origin) or [])
     else:
         return None
     return entries
@@ -137,7 +145,7 @@ async def audit_sitemap(job_id: str, target_url: str, http_username: str | None 
         if text is None:
             results.append({"url": cand, "found": False})
             continue
-        entries = await _fetch_sitemap_entries(text, auth=auth)
+        entries = await _fetch_sitemap_entries(text, auth=auth, origin=origin)
         if entries is None:
             results.append({"url": cand, "found": True, "valid": False})
             continue
