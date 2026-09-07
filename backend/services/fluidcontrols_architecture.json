@@ -1,0 +1,1693 @@
+{
+  "/products/tube-fittings-and-connectors": {
+    "type": "family",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors"
+  },
+  "/products/hoses": {
+    "type": "family",
+    "family_name": "Hoses",
+    "family_url": "/products/hoses"
+  },
+  "/products/quick-release-couplings": {
+    "type": "category",
+    "family_name": "Quick Release Couplings",
+    "family_url": "/products/quick-release-couplings",
+    "category_name": "Quick Release Couplings",
+    "category_url": "/products/quick-release-couplings",
+    "is_leaf_product": true
+  },
+  "/products/specialty-and-engineered-products": {
+    "type": "family",
+    "family_name": "Specialty & Engineered Products",
+    "family_url": "/products/specialty-and-engineered-products"
+  },
+  "/products/instrumentation-valves": {
+    "type": "family",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves"
+  },
+  "/products/ball-valves": {
+    "type": "family",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves"
+  },
+  "/products/check-non-return-valves": {
+    "type": "family",
+    "family_name": "Check / Non-Return Valves",
+    "family_url": "/products/check-non-return-valves"
+  },
+  "/products/instrumentation-manifolds": {
+    "type": "family",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds"
+  },
+  "/products/clamps-and-pipe-supports": {
+    "type": "family",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports"
+  },
+  "/products/flanges-and-hydraulic-connections": {
+    "type": "family",
+    "family_name": "Flanges & Hydraulic Connections",
+    "family_url": "/products/flanges-and-hydraulic-connections"
+  },
+  "/products/caps-plugs-and-closures": {
+    "type": "category",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Caps, plugs & closures",
+    "category_url": "/products/caps-plugs-and-closures",
+    "is_leaf_product": false
+  },
+  "/products/elbows": {
+    "type": "category",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Elbows",
+    "category_url": "/products/elbows",
+    "is_leaf_product": false
+  },
+  "/products/female-connectors-and-adapters": {
+    "type": "category",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Female connectors & adapters",
+    "category_url": "/products/female-connectors-and-adapters",
+    "is_leaf_product": false
+  },
+  "/products/spare-parts-and-accessories": {
+    "type": "category",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Spare Parts & Accessories",
+    "category_url": "/products/spare-parts-and-accessories",
+    "is_leaf_product": false
+  },
+  "/products/male-connectors-and-adapters": {
+    "type": "category",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Male connectors & adapters",
+    "category_url": "/products/male-connectors-and-adapters",
+    "is_leaf_product": false
+  },
+  "/products/reducers": {
+    "type": "category",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Reducers",
+    "category_url": "/products/reducers",
+    "is_leaf_product": false
+  },
+  "/products/swaging-tools": {
+    "type": "category",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Swaging tools",
+    "category_url": "/products/swaging-tools",
+    "is_leaf_product": false
+  },
+  "/products/tees-and-crosses": {
+    "type": "category",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Tees & crosses",
+    "category_url": "/products/tees-and-crosses",
+    "is_leaf_product": false
+  },
+  "/products/unions": {
+    "type": "category",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Unions",
+    "category_url": "/products/unions",
+    "is_leaf_product": false
+  },
+  "/products/weld-fittings": {
+    "type": "category",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Weld fittings",
+    "category_url": "/products/weld-fittings",
+    "is_leaf_product": false
+  },
+  "/products/ptfe-hoses": {
+    "type": "category",
+    "family_name": "Hoses",
+    "family_url": "/products/hoses",
+    "category_name": "PTFE Hoses",
+    "category_url": "/products/ptfe-hoses",
+    "is_leaf_product": true
+  },
+  "/products/flexible-metal-hoses": {
+    "type": "category",
+    "family_name": "Hoses",
+    "family_url": "/products/hoses",
+    "category_name": "Flexible Metal Hoses",
+    "category_url": "/products/flexible-metal-hoses",
+    "is_leaf_product": true
+  },
+  "/products/rubber-hoses": {
+    "type": "category",
+    "family_name": "Hoses",
+    "family_url": "/products/hoses",
+    "category_name": "Rubber Hoses",
+    "category_url": "/products/rubber-hoses",
+    "is_leaf_product": true
+  },
+  "/products/air-headers-and-distribution-manifolds": {
+    "type": "category",
+    "family_name": "Specialty & Engineered Products",
+    "family_url": "/products/specialty-and-engineered-products",
+    "category_name": "Air Headers & Distribution Manifolds",
+    "category_url": "/products/air-headers-and-distribution-manifolds",
+    "is_leaf_product": true
+  },
+  "/products/cng-and-fuel-application-fittings": {
+    "type": "category",
+    "family_name": "Specialty & Engineered Products",
+    "family_url": "/products/specialty-and-engineered-products",
+    "category_name": "CNG & Fuel Application Fittings",
+    "category_url": "/products/cng-and-fuel-application-fittings",
+    "is_leaf_product": true
+  },
+  "/products/valves-for-turbine-applications": {
+    "type": "category",
+    "family_name": "Specialty & Engineered Products",
+    "family_url": "/products/specialty-and-engineered-products",
+    "category_name": "Valves for Turbine Applications",
+    "category_url": "/products/valves-for-turbine-applications",
+    "is_leaf_product": true
+  },
+  "/products/pre-fabricated-instrumentation-hook-ups": {
+    "type": "category",
+    "family_name": "Specialty & Engineered Products",
+    "family_url": "/products/specialty-and-engineered-products",
+    "category_name": "Pre-Fabricated Instrumentation Hook-Ups",
+    "category_url": "/products/pre-fabricated-instrumentation-hook-ups",
+    "is_leaf_product": false
+  },
+  "/products/angle-needle-valves": {
+    "type": "category",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Angle Needle Valves",
+    "category_url": "/products/angle-needle-valves",
+    "is_leaf_product": false
+  },
+  "/products/control-valves": {
+    "type": "category",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Control Valves",
+    "category_url": "/products/control-valves",
+    "is_leaf_product": false
+  },
+  "/products/drain-valves": {
+    "type": "category",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Drain Valves",
+    "category_url": "/products/drain-valves",
+    "is_leaf_product": true
+  },
+  "/products/gauge-valves": {
+    "type": "category",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Gauge Valves",
+    "category_url": "/products/gauge-valves",
+    "is_leaf_product": false
+  },
+  "/products/globe-isolation-valves": {
+    "type": "category",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Globe / Isolation Valves",
+    "category_url": "/products/globe-isolation-valves",
+    "is_leaf_product": false
+  },
+  "/products/high-pressure-needle-valves": {
+    "type": "category",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "High-Pressure Needle Valves",
+    "category_url": "/products/high-pressure-needle-valves",
+    "is_leaf_product": true
+  },
+  "/products/multi-port-gauge-valves": {
+    "type": "category",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Multi-Port Gauge Valves",
+    "category_url": "/products/multi-port-gauge-valves",
+    "is_leaf_product": true
+  },
+  "/products/needle-plug-valves": {
+    "type": "category",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Needle / Plug Valves",
+    "category_url": "/products/needle-plug-valves",
+    "is_leaf_product": false
+  },
+  "/products/plug-valves": {
+    "type": "category",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Plug Valves",
+    "category_url": "/products/plug-valves",
+    "is_leaf_product": false
+  },
+  "/products/pressure-control-adjustable-pressure": {
+    "type": "category",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Pressure Control / Adjustable Pressure",
+    "category_url": "/products/pressure-control-adjustable-pressure",
+    "is_leaf_product": true
+  },
+  "/products/pressure-gauge-pin-valves": {
+    "type": "category",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Pressure Gauge Pin Valves",
+    "category_url": "/products/pressure-gauge-pin-valves",
+    "is_leaf_product": false
+  },
+  "/products/push-to-read-gauge-isolators": {
+    "type": "category",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Push-to-Read Gauge Isolators",
+    "category_url": "/products/push-to-read-gauge-isolators",
+    "is_leaf_product": true
+  },
+  "/products/shut-off-valves": {
+    "type": "category",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Shut-Off Valves",
+    "category_url": "/products/shut-off-valves",
+    "is_leaf_product": false
+  },
+  "/products/stop-valves": {
+    "type": "category",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Stop Valves",
+    "category_url": "/products/stop-valves",
+    "is_leaf_product": false
+  },
+  "/products/two-way-ball-valves": {
+    "type": "category",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves",
+    "category_name": "2-Way Ball Valves",
+    "category_url": "/products/two-way-ball-valves",
+    "is_leaf_product": false
+  },
+  "/products/three-way-ball-valves": {
+    "type": "category",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves",
+    "category_name": "3-Way Ball Valves",
+    "category_url": "/products/three-way-ball-valves",
+    "is_leaf_product": false
+  },
+  "/products/four-way-ball-valves": {
+    "type": "category",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves",
+    "category_name": "4-Way Ball Valves",
+    "category_url": "/products/four-way-ball-valves",
+    "is_leaf_product": false
+  },
+  "/products/flanged-ball-valves": {
+    "type": "category",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves",
+    "category_name": "Flanged Ball Valves",
+    "category_url": "/products/flanged-ball-valves",
+    "is_leaf_product": false
+  },
+  "/products/floating-ball-valves": {
+    "type": "category",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves",
+    "category_name": "Floating Ball Valves",
+    "category_url": "/products/floating-ball-valves",
+    "is_leaf_product": true
+  },
+  "/products/high-pressure-pn-200-ball-valves": {
+    "type": "category",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves",
+    "category_name": "High-Pressure PN 200 Ball Valves",
+    "category_url": "/products/high-pressure-pn-200-ball-valves",
+    "is_leaf_product": false
+  },
+  "/products/high-pressure-pn-400-ball-valves": {
+    "type": "category",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves",
+    "category_name": "High-Pressure PN 400 Ball Valves",
+    "category_url": "/products/high-pressure-pn-400-ball-valves",
+    "is_leaf_product": false
+  },
+  "/products/manifold-mounted-ball-valves": {
+    "type": "category",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves",
+    "category_name": "Manifold-Mounted Ball Valves",
+    "category_url": "/products/manifold-mounted-ball-valves",
+    "is_leaf_product": true
+  },
+  "/products/single-ferrule-tube-ends": {
+    "type": "category",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves",
+    "category_name": "Single Ferrule tube ends",
+    "category_url": "/products/single-ferrule-tube-ends",
+    "is_leaf_product": true
+  },
+  "/products/switching-service-ball-valves": {
+    "type": "category",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves",
+    "category_name": "Switching Service Ball Valves",
+    "category_url": "/products/switching-service-ball-valves",
+    "is_leaf_product": false
+  },
+  "/products/compact-check-valves": {
+    "type": "category",
+    "family_name": "Check / Non-Return Valves",
+    "family_url": "/products/check-non-return-valves",
+    "category_name": "Compact Check Valves",
+    "category_url": "/products/compact-check-valves",
+    "is_leaf_product": false
+  },
+  "/products/pn-400-check-valves": {
+    "type": "category",
+    "family_name": "Check / Non-Return Valves",
+    "family_url": "/products/check-non-return-valves",
+    "category_name": "PN 400 Check Valves",
+    "category_url": "/products/pn-400-check-valves",
+    "is_leaf_product": false
+  },
+  "/products/two-valve-manifolds": {
+    "type": "category",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "2-Valve Manifolds",
+    "category_url": "/products/two-valve-manifolds",
+    "is_leaf_product": false
+  },
+  "/products/three-valve-manifolds": {
+    "type": "category",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "3-Valve Manifolds",
+    "category_url": "/products/three-valve-manifolds",
+    "is_leaf_product": false
+  },
+  "/products/four-valve-manifolds": {
+    "type": "category",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "4-Valve Manifolds",
+    "category_url": "/products/four-valve-manifolds",
+    "is_leaf_product": false
+  },
+  "/products/five-valve-manifolds": {
+    "type": "category",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "5-Valve Manifolds",
+    "category_url": "/products/five-valve-manifolds",
+    "is_leaf_product": false
+  },
+  "/products/valve-combinations": {
+    "type": "category",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "Valve Combinations",
+    "category_url": "/products/valve-combinations",
+    "is_leaf_product": true
+  },
+  "/products/channel-mounting-rails": {
+    "type": "category",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "Channel Mounting Rails",
+    "category_url": "/products/channel-mounting-rails",
+    "is_leaf_product": true
+  },
+  "/products/construction-series": {
+    "type": "category",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "Construction Series",
+    "category_url": "/products/construction-series",
+    "is_leaf_product": false
+  },
+  "/products/flat-strip-u-clamps": {
+    "type": "category",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "Flat Strip U Clamps",
+    "category_url": "/products/flat-strip-u-clamps",
+    "is_leaf_product": false
+  },
+  "/products/heavy-duty-series": {
+    "type": "category",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "Heavy Duty Series",
+    "category_url": "/products/heavy-duty-series",
+    "is_leaf_product": false
+  },
+  "/products/pipe-clips": {
+    "type": "category",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "Pipe Clips",
+    "category_url": "/products/pipe-clips",
+    "is_leaf_product": false
+  },
+  "/products/standard-duty-series": {
+    "type": "category",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "Standard Duty Series",
+    "category_url": "/products/standard-duty-series",
+    "is_leaf_product": false
+  },
+  "/products/standard-duty-series-heavy-duty-series": {
+    "type": "category",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "Standard Duty Series / Heavy Duty Series",
+    "category_url": "/products/standard-duty-series-heavy-duty-series",
+    "is_leaf_product": true
+  },
+  "/products/tube-and-pipe-clamps": {
+    "type": "category",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "Tube & Pipe Clamps",
+    "category_url": "/products/tube-and-pipe-clamps",
+    "is_leaf_product": true
+  },
+  "/products/twin-series-clamps": {
+    "type": "category",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "Twin Series Clamps",
+    "category_url": "/products/twin-series-clamps",
+    "is_leaf_product": true
+  },
+  "/products/u-bolt-clamps": {
+    "type": "category",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "U-Bolt Clamps",
+    "category_url": "/products/u-bolt-clamps",
+    "is_leaf_product": false
+  },
+  "/products/elbow-flange-connections": {
+    "type": "category",
+    "family_name": "Flanges & Hydraulic Connections",
+    "family_url": "/products/flanges-and-hydraulic-connections",
+    "category_name": "Elbow Flange Connections",
+    "category_url": "/products/elbow-flange-connections",
+    "is_leaf_product": false
+  },
+  "/products/iso-6162": {
+    "type": "category",
+    "family_name": "Flanges & Hydraulic Connections",
+    "family_url": "/products/flanges-and-hydraulic-connections",
+    "category_name": "ISO 6162",
+    "category_url": "/products/iso-6162",
+    "is_leaf_product": false
+  },
+  "/products/pn-flanges": {
+    "type": "category",
+    "family_name": "Flanges & Hydraulic Connections",
+    "family_url": "/products/flanges-and-hydraulic-connections",
+    "category_name": "PN Flanges",
+    "category_url": "/products/pn-flanges",
+    "is_leaf_product": false
+  },
+  "/products/sae-cetop-flanges": {
+    "type": "category",
+    "family_name": "Flanges & Hydraulic Connections",
+    "family_url": "/products/flanges-and-hydraulic-connections",
+    "category_name": "SAE / CETOP Flanges",
+    "category_url": "/products/sae-cetop-flanges",
+    "is_leaf_product": true
+  },
+  "/products/sae-flanges": {
+    "type": "category",
+    "family_name": "Flanges & Hydraulic Connections",
+    "family_url": "/products/flanges-and-hydraulic-connections",
+    "category_name": "SAE Flanges",
+    "category_url": "/products/sae-flanges",
+    "is_leaf_product": false
+  },
+  "/products/caps-plugs-and-closures/coupling-cap": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Caps, plugs & closures",
+    "category_url": "/products/caps-plugs-and-closures",
+    "model_name": "Coupling cap",
+    "model_url": "/products/caps-plugs-and-closures/coupling-cap"
+  },
+  "/products/caps-plugs-and-closures/fitting-end-closure": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Caps, plugs & closures",
+    "category_url": "/products/caps-plugs-and-closures",
+    "model_name": "Fitting end closure",
+    "model_url": "/products/caps-plugs-and-closures/fitting-end-closure"
+  },
+  "/products/caps-plugs-and-closures/tube-end-closure": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Caps, plugs & closures",
+    "category_url": "/products/caps-plugs-and-closures",
+    "model_name": "Tube end closure",
+    "model_url": "/products/caps-plugs-and-closures/tube-end-closure"
+  },
+  "/products/elbows/elbow-45deg-male": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Elbows",
+    "category_url": "/products/elbows",
+    "model_name": "45\u00b0 male elbow",
+    "model_url": "/products/elbows/elbow-45deg-male"
+  },
+  "/products/elbows/elbow-45deg-positionable-male": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Elbows",
+    "category_url": "/products/elbows",
+    "model_name": "45\u00b0 positionable male elbow",
+    "model_url": "/products/elbows/elbow-45deg-positionable-male"
+  },
+  "/products/elbows/bulkhead-elbow": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Elbows",
+    "category_url": "/products/elbows",
+    "model_name": "Bulkhead elbow",
+    "model_url": "/products/elbows/bulkhead-elbow"
+  },
+  "/products/elbows/female-elbow": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Elbows",
+    "category_url": "/products/elbows",
+    "model_name": "Female elbow",
+    "model_url": "/products/elbows/female-elbow"
+  },
+  "/products/elbows/male-elbow": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Elbows",
+    "category_url": "/products/elbows",
+    "model_name": "Male elbow",
+    "model_url": "/products/elbows/male-elbow"
+  },
+  "/products/elbows/positionable-male-elbow": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Elbows",
+    "category_url": "/products/elbows",
+    "model_name": "Positionable male elbow",
+    "model_url": "/products/elbows/positionable-male-elbow"
+  },
+  "/products/female-connectors-and-adapters/bulkhead-female-connector": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Female connectors & adapters",
+    "category_url": "/products/female-connectors-and-adapters",
+    "model_name": "Bulkhead female connector",
+    "model_url": "/products/female-connectors-and-adapters/bulkhead-female-connector"
+  },
+  "/products/female-connectors-and-adapters/female-adapter": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Female connectors & adapters",
+    "category_url": "/products/female-connectors-and-adapters",
+    "model_name": "Female adapter",
+    "model_url": "/products/female-connectors-and-adapters/female-adapter"
+  },
+  "/products/female-connectors-and-adapters/female-connector": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Female connectors & adapters",
+    "category_url": "/products/female-connectors-and-adapters",
+    "model_name": "Female connector",
+    "model_url": "/products/female-connectors-and-adapters/female-connector"
+  },
+  "/products/female-connectors-and-adapters/female-manometer-adapter": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Female connectors & adapters",
+    "category_url": "/products/female-connectors-and-adapters",
+    "model_name": "Female manometer adapter",
+    "model_url": "/products/female-connectors-and-adapters/female-manometer-adapter"
+  },
+  "/products/female-connectors-and-adapters/female-manometer-connector": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Female connectors & adapters",
+    "category_url": "/products/female-connectors-and-adapters",
+    "model_name": "Female manometer connector",
+    "model_url": "/products/female-connectors-and-adapters/female-manometer-connector"
+  },
+  "/products/spare-parts-and-accessories/back-ferrule": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Spare Parts & Accessories",
+    "category_url": "/products/spare-parts-and-accessories",
+    "model_name": "Back ferrule",
+    "model_url": "/products/spare-parts-and-accessories/back-ferrule"
+  },
+  "/products/spare-parts-and-accessories/front-ferrule": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Spare Parts & Accessories",
+    "category_url": "/products/spare-parts-and-accessories",
+    "model_name": "Front ferrule",
+    "model_url": "/products/spare-parts-and-accessories/front-ferrule"
+  },
+  "/products/male-connectors-and-adapters/bulkhead-male-connector": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Male connectors & adapters",
+    "category_url": "/products/male-connectors-and-adapters",
+    "model_name": "Bulkhead male connector",
+    "model_url": "/products/male-connectors-and-adapters/bulkhead-male-connector"
+  },
+  "/products/male-connectors-and-adapters/male-adapter": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Male connectors & adapters",
+    "category_url": "/products/male-connectors-and-adapters",
+    "model_name": "Male adapter",
+    "model_url": "/products/male-connectors-and-adapters/male-adapter"
+  },
+  "/products/male-connectors-and-adapters/male-connector": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Male connectors & adapters",
+    "category_url": "/products/male-connectors-and-adapters",
+    "model_name": "Male connector",
+    "model_url": "/products/male-connectors-and-adapters/male-connector"
+  },
+  "/products/male-connectors-and-adapters/o-seal-male-adapter": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Male connectors & adapters",
+    "category_url": "/products/male-connectors-and-adapters",
+    "model_name": "O-seal male adapter",
+    "model_url": "/products/male-connectors-and-adapters/o-seal-male-adapter"
+  },
+  "/products/male-connectors-and-adapters/o-seal-male-connector": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Male connectors & adapters",
+    "category_url": "/products/male-connectors-and-adapters",
+    "model_name": "O-seal male connector",
+    "model_url": "/products/male-connectors-and-adapters/o-seal-male-connector"
+  },
+  "/products/reducers/bulkhead-reducer": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Reducers",
+    "category_url": "/products/reducers",
+    "model_name": "Bulkhead reducer",
+    "model_url": "/products/reducers/bulkhead-reducer"
+  },
+  "/products/reducers/reducer": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Reducers",
+    "category_url": "/products/reducers",
+    "model_name": "Reducer",
+    "model_url": "/products/reducers/reducer"
+  },
+  "/products/swaging-tools/swaging-machine-assembly-tools": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Swaging tools",
+    "category_url": "/products/swaging-tools",
+    "model_name": "Swaging machine assembly tools",
+    "model_url": "/products/swaging-tools/swaging-machine-assembly-tools"
+  },
+  "/products/tees-and-crosses/female-branch-tee": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Tees & crosses",
+    "category_url": "/products/tees-and-crosses",
+    "model_name": "Female branch tee",
+    "model_url": "/products/tees-and-crosses/female-branch-tee"
+  },
+  "/products/tees-and-crosses/female-run-tee": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Tees & crosses",
+    "category_url": "/products/tees-and-crosses",
+    "model_name": "Female run tee",
+    "model_url": "/products/tees-and-crosses/female-run-tee"
+  },
+  "/products/tees-and-crosses/male-branch-tee": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Tees & crosses",
+    "category_url": "/products/tees-and-crosses",
+    "model_name": "Male branch tee",
+    "model_url": "/products/tees-and-crosses/male-branch-tee"
+  },
+  "/products/tees-and-crosses/male-run-tee": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Tees & crosses",
+    "category_url": "/products/tees-and-crosses",
+    "model_name": "Male run tee",
+    "model_url": "/products/tees-and-crosses/male-run-tee"
+  },
+  "/products/tees-and-crosses/positionable-branch-tee": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Tees & crosses",
+    "category_url": "/products/tees-and-crosses",
+    "model_name": "Positionable branch tee",
+    "model_url": "/products/tees-and-crosses/positionable-branch-tee"
+  },
+  "/products/tees-and-crosses/positionable-male-branch-tee": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Tees & crosses",
+    "category_url": "/products/tees-and-crosses",
+    "model_name": "Positionable male branch tee",
+    "model_url": "/products/tees-and-crosses/positionable-male-branch-tee"
+  },
+  "/products/tees-and-crosses/positionable-male-run-tee": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Tees & crosses",
+    "category_url": "/products/tees-and-crosses",
+    "model_name": "Positionable male run tee",
+    "model_url": "/products/tees-and-crosses/positionable-male-run-tee"
+  },
+  "/products/unions/bulkhead-reducing-union": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Unions",
+    "category_url": "/products/unions",
+    "model_name": "Bulkhead reducing union",
+    "model_url": "/products/unions/bulkhead-reducing-union"
+  },
+  "/products/unions/bulkhead-union": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Unions",
+    "category_url": "/products/unions",
+    "model_name": "Bulkhead union",
+    "model_url": "/products/unions/bulkhead-union"
+  },
+  "/products/unions/reducing-union": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Unions",
+    "category_url": "/products/unions",
+    "model_name": "Reducing union",
+    "model_url": "/products/unions/reducing-union"
+  },
+  "/products/unions/reducing-union-tee": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Unions",
+    "category_url": "/products/unions",
+    "model_name": "Reducing union tee",
+    "model_url": "/products/unions/reducing-union-tee"
+  },
+  "/products/unions/union": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Unions",
+    "category_url": "/products/unions",
+    "model_name": "Union",
+    "model_url": "/products/unions/union"
+  },
+  "/products/unions/union-cross": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Unions",
+    "category_url": "/products/unions",
+    "model_name": "Union cross",
+    "model_url": "/products/unions/union-cross"
+  },
+  "/products/unions/union-elbow": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Unions",
+    "category_url": "/products/unions",
+    "model_name": "Union elbow",
+    "model_url": "/products/unions/union-elbow"
+  },
+  "/products/unions/union-tee": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Unions",
+    "category_url": "/products/unions",
+    "model_name": "Union tee",
+    "model_url": "/products/unions/union-tee"
+  },
+  "/products/weld-fittings/butt-weld-pipe-connector": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Weld fittings",
+    "category_url": "/products/weld-fittings",
+    "model_name": "Butt weld pipe connector",
+    "model_url": "/products/weld-fittings/butt-weld-pipe-connector"
+  },
+  "/products/weld-fittings/butt-weld-pipe-elbow": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Weld fittings",
+    "category_url": "/products/weld-fittings",
+    "model_name": "Butt weld pipe elbow",
+    "model_url": "/products/weld-fittings/butt-weld-pipe-elbow"
+  },
+  "/products/weld-fittings/socket-weld-tube-connector": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Weld fittings",
+    "category_url": "/products/weld-fittings",
+    "model_name": "Socket weld tube connector",
+    "model_url": "/products/weld-fittings/socket-weld-tube-connector"
+  },
+  "/products/weld-fittings/socket-weld-tube-elbow": {
+    "type": "model",
+    "family_name": "Tube Fittings & Connectors",
+    "family_url": "/products/tube-fittings-and-connectors",
+    "category_name": "Weld fittings",
+    "category_url": "/products/weld-fittings",
+    "model_name": "Socket weld tube elbow",
+    "model_url": "/products/weld-fittings/socket-weld-tube-elbow"
+  },
+  "/products/pre-fabricated-instrumentation-hook-ups/dp-flow-transmitter-hook-up": {
+    "type": "model",
+    "family_name": "Specialty & Engineered Products",
+    "family_url": "/products/specialty-and-engineered-products",
+    "category_name": "Pre-Fabricated Instrumentation Hook-Ups",
+    "category_url": "/products/pre-fabricated-instrumentation-hook-ups",
+    "model_name": "DP Flow Transmitter Hook-Up",
+    "model_url": "/products/pre-fabricated-instrumentation-hook-ups/dp-flow-transmitter-hook-up"
+  },
+  "/products/pre-fabricated-instrumentation-hook-ups/pressure-gauge-hook-up": {
+    "type": "model",
+    "family_name": "Specialty & Engineered Products",
+    "family_url": "/products/specialty-and-engineered-products",
+    "category_name": "Pre-Fabricated Instrumentation Hook-Ups",
+    "category_url": "/products/pre-fabricated-instrumentation-hook-ups",
+    "model_name": "Hook-Up for Pressure Gauge",
+    "model_url": "/products/pre-fabricated-instrumentation-hook-ups/pressure-gauge-hook-up"
+  },
+  "/products/pre-fabricated-instrumentation-hook-ups/pressure-instrument-hook-up": {
+    "type": "model",
+    "family_name": "Specialty & Engineered Products",
+    "family_url": "/products/specialty-and-engineered-products",
+    "category_name": "Pre-Fabricated Instrumentation Hook-Ups",
+    "category_url": "/products/pre-fabricated-instrumentation-hook-ups",
+    "model_name": "Hook-Up for Pressure Instruments",
+    "model_url": "/products/pre-fabricated-instrumentation-hook-ups/pressure-instrument-hook-up"
+  },
+  "/products/angle-needle-valves/screwed-bonnet": {
+    "type": "model",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Angle Needle Valves",
+    "category_url": "/products/angle-needle-valves",
+    "model_name": "Screwed Bonnet",
+    "model_url": "/products/angle-needle-valves/screwed-bonnet"
+  },
+  "/products/control-valves/colour-flow": {
+    "type": "model",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Control Valves",
+    "category_url": "/products/control-valves",
+    "model_name": "Colour Flow",
+    "model_url": "/products/control-valves/colour-flow"
+  },
+  "/products/gauge-valves/double-block-and-bleed": {
+    "type": "model",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Gauge Valves",
+    "category_url": "/products/gauge-valves",
+    "model_name": "Double Block & Bleed",
+    "model_url": "/products/gauge-valves/double-block-and-bleed"
+  },
+  "/products/gauge-valves/single-block-and-bleed": {
+    "type": "model",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Gauge Valves",
+    "category_url": "/products/gauge-valves",
+    "model_name": "Single Block & Bleed",
+    "model_url": "/products/gauge-valves/single-block-and-bleed"
+  },
+  "/products/globe-isolation-valves/bolted-bonnet": {
+    "type": "model",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Globe / Isolation Valves",
+    "category_url": "/products/globe-isolation-valves",
+    "model_name": "Bolted Bonnet",
+    "model_url": "/products/globe-isolation-valves/bolted-bonnet"
+  },
+  "/products/globe-isolation-valves/female-ends": {
+    "type": "model",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Globe / Isolation Valves",
+    "category_url": "/products/globe-isolation-valves",
+    "model_name": "Female ends",
+    "model_url": "/products/globe-isolation-valves/female-ends"
+  },
+  "/products/globe-isolation-valves/flow-series": {
+    "type": "model",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Globe / Isolation Valves",
+    "category_url": "/products/globe-isolation-valves",
+    "model_name": "Flow Series",
+    "model_url": "/products/globe-isolation-valves/flow-series"
+  },
+  "/products/globe-isolation-valves/single-ferrule-tube-ends": {
+    "type": "model",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Globe / Isolation Valves",
+    "category_url": "/products/globe-isolation-valves",
+    "model_name": "Single Ferrule tube ends",
+    "model_url": "/products/globe-isolation-valves/single-ferrule-tube-ends"
+  },
+  "/products/needle-plug-valves/colour-flow": {
+    "type": "model",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Needle / Plug Valves",
+    "category_url": "/products/needle-plug-valves",
+    "model_name": "Colour Flow",
+    "model_url": "/products/needle-plug-valves/colour-flow"
+  },
+  "/products/needle-plug-valves/double-ferrule-ends": {
+    "type": "model",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Needle / Plug Valves",
+    "category_url": "/products/needle-plug-valves",
+    "model_name": "Double Ferrule ends",
+    "model_url": "/products/needle-plug-valves/double-ferrule-ends"
+  },
+  "/products/needle-plug-valves/screwed-bonnet": {
+    "type": "model",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Needle / Plug Valves",
+    "category_url": "/products/needle-plug-valves",
+    "model_name": "Screwed Bonnet",
+    "model_url": "/products/needle-plug-valves/screwed-bonnet"
+  },
+  "/products/needle-plug-valves/screwed-ends": {
+    "type": "model",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Needle / Plug Valves",
+    "category_url": "/products/needle-plug-valves",
+    "model_name": "Screwed ends",
+    "model_url": "/products/needle-plug-valves/screwed-ends"
+  },
+  "/products/plug-valves/screwed-bonnet": {
+    "type": "model",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Plug Valves",
+    "category_url": "/products/plug-valves",
+    "model_name": "Screwed Bonnet",
+    "model_url": "/products/plug-valves/screwed-bonnet"
+  },
+  "/products/pressure-gauge-pin-valves/integral-bonnet": {
+    "type": "model",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Pressure Gauge Pin Valves",
+    "category_url": "/products/pressure-gauge-pin-valves",
+    "model_name": "Integral Bonnet",
+    "model_url": "/products/pressure-gauge-pin-valves/integral-bonnet"
+  },
+  "/products/pressure-gauge-pin-valves/union-bonnet": {
+    "type": "model",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Pressure Gauge Pin Valves",
+    "category_url": "/products/pressure-gauge-pin-valves",
+    "model_name": "Union Bonnet",
+    "model_url": "/products/pressure-gauge-pin-valves/union-bonnet"
+  },
+  "/products/shut-off-valves/gasket-mounted": {
+    "type": "model",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Shut-Off Valves",
+    "category_url": "/products/shut-off-valves",
+    "model_name": "Gasket Mounted",
+    "model_url": "/products/shut-off-valves/gasket-mounted"
+  },
+  "/products/shut-off-valves/union-bonnet": {
+    "type": "model",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Shut-Off Valves",
+    "category_url": "/products/shut-off-valves",
+    "model_name": "Union Bonnet",
+    "model_url": "/products/shut-off-valves/union-bonnet"
+  },
+  "/products/stop-valves/balanced-piston": {
+    "type": "model",
+    "family_name": "Instrumentation Valves",
+    "family_url": "/products/instrumentation-valves",
+    "category_name": "Stop Valves",
+    "category_url": "/products/stop-valves",
+    "model_name": "Balanced Piston",
+    "model_url": "/products/stop-valves/balanced-piston"
+  },
+  "/products/two-way-ball-valves/double-ferrule-ends": {
+    "type": "model",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves",
+    "category_name": "2-Way Ball Valves",
+    "category_url": "/products/two-way-ball-valves",
+    "model_name": "Double Ferrule ends",
+    "model_url": "/products/two-way-ball-valves/double-ferrule-ends"
+  },
+  "/products/three-way-ball-valves/switching-service": {
+    "type": "model",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves",
+    "category_name": "3-Way Ball Valves",
+    "category_url": "/products/three-way-ball-valves",
+    "model_name": "Switching Service",
+    "model_url": "/products/three-way-ball-valves/switching-service"
+  },
+  "/products/four-way-ball-valves/switching-service": {
+    "type": "model",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves",
+    "category_name": "4-Way Ball Valves",
+    "category_url": "/products/four-way-ball-valves",
+    "model_name": "Switching Service",
+    "model_url": "/products/four-way-ball-valves/switching-service"
+  },
+  "/products/flanged-ball-valves/cetop-iso-6164": {
+    "type": "model",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves",
+    "category_name": "Flanged Ball Valves",
+    "category_url": "/products/flanged-ball-valves",
+    "model_name": "CETOP / ISO 6164",
+    "model_url": "/products/flanged-ball-valves/cetop-iso-6164"
+  },
+  "/products/flanged-ball-valves/sae-iso-6162": {
+    "type": "model",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves",
+    "category_name": "Flanged Ball Valves",
+    "category_url": "/products/flanged-ball-valves",
+    "model_name": "SAE / ISO 6162",
+    "model_url": "/products/flanged-ball-valves/sae-iso-6162"
+  },
+  "/products/high-pressure-pn-200-ball-valves/screwed-ends": {
+    "type": "model",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves",
+    "category_name": "High-Pressure PN 200 Ball Valves",
+    "category_url": "/products/high-pressure-pn-200-ball-valves",
+    "model_name": "Screwed ends",
+    "model_url": "/products/high-pressure-pn-200-ball-valves/screwed-ends"
+  },
+  "/products/high-pressure-pn-400-ball-valves/screwed-ends": {
+    "type": "model",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves",
+    "category_name": "High-Pressure PN 400 Ball Valves",
+    "category_url": "/products/high-pressure-pn-400-ball-valves",
+    "model_name": "Screwed ends",
+    "model_url": "/products/high-pressure-pn-400-ball-valves/screwed-ends"
+  },
+  "/products/switching-service-ball-valves/two-way": {
+    "type": "model",
+    "family_name": "Ball Valves",
+    "family_url": "/products/ball-valves",
+    "category_name": "Switching Service Ball Valves",
+    "category_url": "/products/switching-service-ball-valves",
+    "model_name": "2-Way",
+    "model_url": "/products/switching-service-ball-valves/two-way"
+  },
+  "/products/compact-check-valves/pipe-single-ferrule-tube-ends": {
+    "type": "model",
+    "family_name": "Check / Non-Return Valves",
+    "family_url": "/products/check-non-return-valves",
+    "category_name": "Compact Check Valves",
+    "category_url": "/products/compact-check-valves",
+    "model_name": "Pipe / Single Ferrule tube ends",
+    "model_url": "/products/compact-check-valves/pipe-single-ferrule-tube-ends"
+  },
+  "/products/compact-check-valves/screwed-ends": {
+    "type": "model",
+    "family_name": "Check / Non-Return Valves",
+    "family_url": "/products/check-non-return-valves",
+    "category_name": "Compact Check Valves",
+    "category_url": "/products/compact-check-valves",
+    "model_name": "Screwed ends",
+    "model_url": "/products/compact-check-valves/screwed-ends"
+  },
+  "/products/compact-check-valves/single-ferrule-tube-ends": {
+    "type": "model",
+    "family_name": "Check / Non-Return Valves",
+    "family_url": "/products/check-non-return-valves",
+    "category_name": "Compact Check Valves",
+    "category_url": "/products/compact-check-valves",
+    "model_name": "Single Ferrule tube ends",
+    "model_url": "/products/compact-check-valves/single-ferrule-tube-ends"
+  },
+  "/products/compact-check-valves/single-ferrule-tube-pipe-ends": {
+    "type": "model",
+    "family_name": "Check / Non-Return Valves",
+    "family_url": "/products/check-non-return-valves",
+    "category_name": "Compact Check Valves",
+    "category_url": "/products/compact-check-valves",
+    "model_name": "Single Ferrule tube/pipe ends",
+    "model_url": "/products/compact-check-valves/single-ferrule-tube-pipe-ends"
+  },
+  "/products/pn-400-check-valves/double-ferrule-tube-ends": {
+    "type": "model",
+    "family_name": "Check / Non-Return Valves",
+    "family_url": "/products/check-non-return-valves",
+    "category_name": "PN 400 Check Valves",
+    "category_url": "/products/pn-400-check-valves",
+    "model_name": "Double Ferrule tube ends",
+    "model_url": "/products/pn-400-check-valves/double-ferrule-tube-ends"
+  },
+  "/products/pn-400-check-valves/pipe-single-ferrule": {
+    "type": "model",
+    "family_name": "Check / Non-Return Valves",
+    "family_url": "/products/check-non-return-valves",
+    "category_name": "PN 400 Check Valves",
+    "category_url": "/products/pn-400-check-valves",
+    "model_name": "Pipe / Single Ferrule",
+    "model_url": "/products/pn-400-check-valves/pipe-single-ferrule"
+  },
+  "/products/pn-400-check-valves/screwed-ends": {
+    "type": "model",
+    "family_name": "Check / Non-Return Valves",
+    "family_url": "/products/check-non-return-valves",
+    "category_name": "PN 400 Check Valves",
+    "category_url": "/products/pn-400-check-valves",
+    "model_name": "Screwed ends",
+    "model_url": "/products/pn-400-check-valves/screwed-ends"
+  },
+  "/products/pn-400-check-valves/single-ferrule-metric-tube-ends": {
+    "type": "model",
+    "family_name": "Check / Non-Return Valves",
+    "family_url": "/products/check-non-return-valves",
+    "category_name": "PN 400 Check Valves",
+    "category_url": "/products/pn-400-check-valves",
+    "model_name": "Single Ferrule Metric tube ends",
+    "model_url": "/products/pn-400-check-valves/single-ferrule-metric-tube-ends"
+  },
+  "/products/pn-400-check-valves/single-ferrule-tube-pipe-ends": {
+    "type": "model",
+    "family_name": "Check / Non-Return Valves",
+    "family_url": "/products/check-non-return-valves",
+    "category_name": "PN 400 Check Valves",
+    "category_url": "/products/pn-400-check-valves",
+    "model_name": "Single Ferrule tube/pipe ends",
+    "model_url": "/products/pn-400-check-valves/single-ferrule-tube-pipe-ends"
+  },
+  "/products/two-valve-manifolds/block-and-bleed": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "2-Valve Manifolds",
+    "category_url": "/products/two-valve-manifolds",
+    "model_name": "Block & Bleed",
+    "model_url": "/products/two-valve-manifolds/block-and-bleed"
+  },
+  "/products/two-valve-manifolds/coplanar-mounting": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "2-Valve Manifolds",
+    "category_url": "/products/two-valve-manifolds",
+    "model_name": "Coplanar Mounting",
+    "model_url": "/products/two-valve-manifolds/coplanar-mounting"
+  },
+  "/products/two-valve-manifolds/direct-mounting": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "2-Valve Manifolds",
+    "category_url": "/products/two-valve-manifolds",
+    "model_name": "Direct Mounting",
+    "model_url": "/products/two-valve-manifolds/direct-mounting"
+  },
+  "/products/two-valve-manifolds/ptm-1": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "2-Valve Manifolds",
+    "category_url": "/products/two-valve-manifolds",
+    "model_name": "PTM 1",
+    "model_url": "/products/two-valve-manifolds/ptm-1"
+  },
+  "/products/two-valve-manifolds/ptm-2": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "2-Valve Manifolds",
+    "category_url": "/products/two-valve-manifolds",
+    "model_name": "PTM 2",
+    "model_url": "/products/two-valve-manifolds/ptm-2"
+  },
+  "/products/two-valve-manifolds/ptm-3": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "2-Valve Manifolds",
+    "category_url": "/products/two-valve-manifolds",
+    "model_name": "PTM 3",
+    "model_url": "/products/two-valve-manifolds/ptm-3"
+  },
+  "/products/two-valve-manifolds/ptm-4": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "2-Valve Manifolds",
+    "category_url": "/products/two-valve-manifolds",
+    "model_name": "PTM 4",
+    "model_url": "/products/two-valve-manifolds/ptm-4"
+  },
+  "/products/two-valve-manifolds/ptm-5": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "2-Valve Manifolds",
+    "category_url": "/products/two-valve-manifolds",
+    "model_name": "PTM 5",
+    "model_url": "/products/two-valve-manifolds/ptm-5"
+  },
+  "/products/two-valve-manifolds/ptm-6": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "2-Valve Manifolds",
+    "category_url": "/products/two-valve-manifolds",
+    "model_name": "PTM 6",
+    "model_url": "/products/two-valve-manifolds/ptm-6"
+  },
+  "/products/two-valve-manifolds/t-type": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "2-Valve Manifolds",
+    "category_url": "/products/two-valve-manifolds",
+    "model_name": "T-Type",
+    "model_url": "/products/two-valve-manifolds/t-type"
+  },
+  "/products/two-valve-manifolds/three-way-pressure-instrument-manifold": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "2-Valve Manifolds",
+    "category_url": "/products/two-valve-manifolds",
+    "model_name": "Three-way pressure instrument manifold",
+    "model_url": "/products/two-valve-manifolds/three-way-pressure-instrument-manifold"
+  },
+  "/products/three-valve-manifolds/coplanar-mounting": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "3-Valve Manifolds",
+    "category_url": "/products/three-valve-manifolds",
+    "model_name": "Coplanar Mounting",
+    "model_url": "/products/three-valve-manifolds/coplanar-mounting"
+  },
+  "/products/three-valve-manifolds/direct-mounting": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "3-Valve Manifolds",
+    "category_url": "/products/three-valve-manifolds",
+    "model_name": "Direct Mounting",
+    "model_url": "/products/three-valve-manifolds/direct-mounting"
+  },
+  "/products/three-valve-manifolds/h-type": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "3-Valve Manifolds",
+    "category_url": "/products/three-valve-manifolds",
+    "model_name": "H-Type",
+    "model_url": "/products/three-valve-manifolds/h-type"
+  },
+  "/products/three-valve-manifolds/remote-mounting": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "3-Valve Manifolds",
+    "category_url": "/products/three-valve-manifolds",
+    "model_name": "Remote Mounting",
+    "model_url": "/products/three-valve-manifolds/remote-mounting"
+  },
+  "/products/three-valve-manifolds/t-type": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "3-Valve Manifolds",
+    "category_url": "/products/three-valve-manifolds",
+    "model_name": "T-Type",
+    "model_url": "/products/three-valve-manifolds/t-type"
+  },
+  "/products/four-valve-manifolds/direct-mounting": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "4-Valve Manifolds",
+    "category_url": "/products/four-valve-manifolds",
+    "model_name": "Direct Mounting",
+    "model_url": "/products/four-valve-manifolds/direct-mounting"
+  },
+  "/products/five-valve-manifolds/coplanar-mounting": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "5-Valve Manifolds",
+    "category_url": "/products/five-valve-manifolds",
+    "model_name": "Coplanar Mounting",
+    "model_url": "/products/five-valve-manifolds/coplanar-mounting"
+  },
+  "/products/five-valve-manifolds/direct-mounting": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "5-Valve Manifolds",
+    "category_url": "/products/five-valve-manifolds",
+    "model_name": "Direct Mounting",
+    "model_url": "/products/five-valve-manifolds/direct-mounting"
+  },
+  "/products/five-valve-manifolds/h-type": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "5-Valve Manifolds",
+    "category_url": "/products/five-valve-manifolds",
+    "model_name": "H-Type",
+    "model_url": "/products/five-valve-manifolds/h-type"
+  },
+  "/products/five-valve-manifolds/remote-mounting": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "5-Valve Manifolds",
+    "category_url": "/products/five-valve-manifolds",
+    "model_name": "Remote Mounting",
+    "model_url": "/products/five-valve-manifolds/remote-mounting"
+  },
+  "/products/five-valve-manifolds/t-type": {
+    "type": "model",
+    "family_name": "Instrumentation Manifolds",
+    "family_url": "/products/instrumentation-manifolds",
+    "category_name": "5-Valve Manifolds",
+    "category_url": "/products/five-valve-manifolds",
+    "model_name": "T-Type",
+    "model_url": "/products/five-valve-manifolds/t-type"
+  },
+  "/products/construction-series/two-part-weld-construction": {
+    "type": "model",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "Construction Series",
+    "category_url": "/products/construction-series",
+    "model_name": "Two-Part Weld Construction",
+    "model_url": "/products/construction-series/two-part-weld-construction"
+  },
+  "/products/flat-strip-u-clamps/type-uf": {
+    "type": "model",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "Flat Strip U Clamps",
+    "category_url": "/products/flat-strip-u-clamps",
+    "model_name": "Type UF",
+    "model_url": "/products/flat-strip-u-clamps/type-uf"
+  },
+  "/products/heavy-duty-series/weld-plate-top-plate-hex-bolts-assembly": {
+    "type": "model",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "Heavy Duty Series",
+    "category_url": "/products/heavy-duty-series",
+    "model_name": "Weld Plate / Top Plate / Hex Bolts assembly",
+    "model_url": "/products/heavy-duty-series/weld-plate-top-plate-hex-bolts-assembly"
+  },
+  "/products/pipe-clips/heavy-series": {
+    "type": "model",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "Pipe Clips",
+    "category_url": "/products/pipe-clips",
+    "model_name": "Heavy Series",
+    "model_url": "/products/pipe-clips/heavy-series"
+  },
+  "/products/pipe-clips/light-series": {
+    "type": "model",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "Pipe Clips",
+    "category_url": "/products/pipe-clips",
+    "model_name": "Light Series",
+    "model_url": "/products/pipe-clips/light-series"
+  },
+  "/products/pipe-clips/pressed-metal-clamps": {
+    "type": "model",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "Pipe Clips",
+    "category_url": "/products/pipe-clips",
+    "model_name": "Pressed Metal Clamps",
+    "model_url": "/products/pipe-clips/pressed-metal-clamps"
+  },
+  "/products/standard-duty-series/weld-plate-and-screws-assembly": {
+    "type": "model",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "Standard Duty Series",
+    "category_url": "/products/standard-duty-series",
+    "model_name": "Weld Plate & Screws assembly",
+    "model_url": "/products/standard-duty-series/weld-plate-and-screws-assembly"
+  },
+  "/products/standard-duty-series/weld-plate-top-plate-hex-bolts-assembly": {
+    "type": "model",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "Standard Duty Series",
+    "category_url": "/products/standard-duty-series",
+    "model_name": "Weld Plate / Top Plate / Hex Bolts assembly",
+    "model_url": "/products/standard-duty-series/weld-plate-top-plate-hex-bolts-assembly"
+  },
+  "/products/u-bolt-clamps/type-psl": {
+    "type": "model",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "U-Bolt Clamps",
+    "category_url": "/products/u-bolt-clamps",
+    "model_name": "Type PSL",
+    "model_url": "/products/u-bolt-clamps/type-psl"
+  },
+  "/products/u-bolt-clamps/type-pss": {
+    "type": "model",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "U-Bolt Clamps",
+    "category_url": "/products/u-bolt-clamps",
+    "model_name": "Type PSS",
+    "model_url": "/products/u-bolt-clamps/type-pss"
+  },
+  "/products/u-bolt-clamps/ubr": {
+    "type": "model",
+    "family_name": "Clamps & Pipe Supports",
+    "family_url": "/products/clamps-and-pipe-supports",
+    "category_name": "U-Bolt Clamps",
+    "category_url": "/products/u-bolt-clamps",
+    "model_name": "UBR",
+    "model_url": "/products/u-bolt-clamps/ubr"
+  },
+  "/products/elbow-flange-connections/butt-weld": {
+    "type": "model",
+    "family_name": "Flanges & Hydraulic Connections",
+    "family_url": "/products/flanges-and-hydraulic-connections",
+    "category_name": "Elbow Flange Connections",
+    "category_url": "/products/elbow-flange-connections",
+    "model_name": "Butt-Weld",
+    "model_url": "/products/elbow-flange-connections/butt-weld"
+  },
+  "/products/elbow-flange-connections/socket-weld": {
+    "type": "model",
+    "family_name": "Flanges & Hydraulic Connections",
+    "family_url": "/products/flanges-and-hydraulic-connections",
+    "category_name": "Elbow Flange Connections",
+    "category_url": "/products/elbow-flange-connections",
+    "model_name": "Socket-Weld",
+    "model_url": "/products/elbow-flange-connections/socket-weld"
+  },
+  "/products/iso-6162/butt-weld": {
+    "type": "model",
+    "family_name": "Flanges & Hydraulic Connections",
+    "family_url": "/products/flanges-and-hydraulic-connections",
+    "category_name": "ISO 6162",
+    "category_url": "/products/iso-6162",
+    "model_name": "Butt-Weld",
+    "model_url": "/products/iso-6162/butt-weld"
+  },
+  "/products/iso-6162/code-61-sae-3000": {
+    "type": "model",
+    "family_name": "Flanges & Hydraulic Connections",
+    "family_url": "/products/flanges-and-hydraulic-connections",
+    "category_name": "ISO 6162",
+    "category_url": "/products/iso-6162",
+    "model_name": "Code 61 / SAE 3000",
+    "model_url": "/products/iso-6162/code-61-sae-3000"
+  },
+  "/products/iso-6162/code-62-sae-6000": {
+    "type": "model",
+    "family_name": "Flanges & Hydraulic Connections",
+    "family_url": "/products/flanges-and-hydraulic-connections",
+    "category_name": "ISO 6162",
+    "category_url": "/products/iso-6162",
+    "model_name": "Code 62 / SAE 6000",
+    "model_url": "/products/iso-6162/code-62-sae-6000"
+  },
+  "/products/pn-flanges/butt-weld": {
+    "type": "model",
+    "family_name": "Flanges & Hydraulic Connections",
+    "family_url": "/products/flanges-and-hydraulic-connections",
+    "category_name": "PN Flanges",
+    "category_url": "/products/pn-flanges",
+    "model_name": "Butt-Weld",
+    "model_url": "/products/pn-flanges/butt-weld"
+  },
+  "/products/pn-flanges/pn-250-static-pn-160-dynamic": {
+    "type": "model",
+    "family_name": "Flanges & Hydraulic Connections",
+    "family_url": "/products/flanges-and-hydraulic-connections",
+    "category_name": "PN Flanges",
+    "category_url": "/products/pn-flanges",
+    "model_name": "PN 250 Static / PN 160 Dynamic",
+    "model_url": "/products/pn-flanges/pn-250-static-pn-160-dynamic"
+  },
+  "/products/pn-flanges/pn-400-static-pn-315-dynamic": {
+    "type": "model",
+    "family_name": "Flanges & Hydraulic Connections",
+    "family_url": "/products/flanges-and-hydraulic-connections",
+    "category_name": "PN Flanges",
+    "category_url": "/products/pn-flanges",
+    "model_name": "PN 400 Static / PN 315 Dynamic",
+    "model_url": "/products/pn-flanges/pn-400-static-pn-315-dynamic"
+  },
+  "/products/pn-flanges/socket-weld": {
+    "type": "model",
+    "family_name": "Flanges & Hydraulic Connections",
+    "family_url": "/products/flanges-and-hydraulic-connections",
+    "category_name": "PN Flanges",
+    "category_url": "/products/pn-flanges",
+    "model_name": "Socket-Weld",
+    "model_url": "/products/pn-flanges/socket-weld"
+  },
+  "/products/pn-flanges/square-flanges": {
+    "type": "model",
+    "family_name": "Flanges & Hydraulic Connections",
+    "family_url": "/products/flanges-and-hydraulic-connections",
+    "category_name": "PN Flanges",
+    "category_url": "/products/pn-flanges",
+    "model_name": "Square Flanges",
+    "model_url": "/products/pn-flanges/square-flanges"
+  },
+  "/products/sae-flanges/butt-weld": {
+    "type": "model",
+    "family_name": "Flanges & Hydraulic Connections",
+    "family_url": "/products/flanges-and-hydraulic-connections",
+    "category_name": "SAE Flanges",
+    "category_url": "/products/sae-flanges",
+    "model_name": "Butt-Weld",
+    "model_url": "/products/sae-flanges/butt-weld"
+  },
+  "/products/sae-flanges/socket-weld": {
+    "type": "model",
+    "family_name": "Flanges & Hydraulic Connections",
+    "family_url": "/products/flanges-and-hydraulic-connections",
+    "category_name": "SAE Flanges",
+    "category_url": "/products/sae-flanges",
+    "model_name": "Socket-Weld",
+    "model_url": "/products/sae-flanges/socket-weld"
+  }
+}
