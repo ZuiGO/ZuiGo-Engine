@@ -3687,7 +3687,7 @@ document.getElementById("competitor-form")?.addEventListener("submit", async (e)
   }
   btn.disabled = true;
   btn.textContent = "Analyzing...";
-  resultsEl.innerHTML = '<div class="insights-label">Crawling every page of each competitor up to ~400 pages (HTTP-first, ~20 min cap each)...</div>';
+  resultsEl.innerHTML = '<div class="insights-label">Crawling every page of each competitor (HTTP-first)...</div>';
   try {
     const resp = await fetch(`${API_BASE}/competitors/${currentJobId}/analyze`, {
       method: "POST",

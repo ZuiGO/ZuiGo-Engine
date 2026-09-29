@@ -107,7 +107,15 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
                     norm = normalize_url(u)
                     if not norm:
                         continue
-                    if urlparse(norm).netloc.lower() != base_domain:
+                    parsed_sitemap_netloc = urlparse(norm).netloc.lower()
+                    if parsed_sitemap_netloc.startswith("www."):
+                        parsed_sitemap_netloc = parsed_sitemap_netloc[4:]
+                    
+                    base_sitemap_netloc = base_domain
+                    if base_sitemap_netloc.startswith("www."):
+                        base_sitemap_netloc = base_sitemap_netloc[4:]
+                        
+                    if parsed_sitemap_netloc != base_sitemap_netloc:
                         continue
                     if norm not in visited and norm not in depth_map:
                         depth_map.setdefault(norm, depth_map.get(target_url, 0) + 1)
@@ -223,9 +231,18 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
                     if not norm:
                         continue
                     full_parsed = urlparse(norm)
-                    if full_parsed.netloc == base_domain or not full_parsed.netloc:
+                    
+                    parsed_netloc = full_parsed.netloc.lower()
+                    if parsed_netloc.startswith("www."):
+                        parsed_netloc = parsed_netloc[4:]
+                    
+                    base_netloc = base_domain
+                    if base_netloc.startswith("www."):
+                        base_netloc = base_netloc[4:]
+
+                    if parsed_netloc == base_netloc or not full_parsed.netloc:
                         internal_urls.append(norm)
-                    elif full_parsed.netloc and full_parsed.netloc != base_domain:
+                    elif full_parsed.netloc and parsed_netloc != base_netloc:
                         external_urls.append(norm)
 
                 has_structured_data = bool(soup.find("script", type="application/ld+json"))

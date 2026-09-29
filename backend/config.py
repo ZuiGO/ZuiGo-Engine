@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     staging_password: str = ""
     crawl_max_pages: int = 2496
     crawl_concurrency: int = 5
-    crawl_timeout_seconds: int = 360
+    crawl_timeout_seconds: int = 3600
     crawl_politeness_delay: float = 0.5
     crawl_robots_delay_max: float = 5.0
     mobile_crawl_concurrency: int = 5
