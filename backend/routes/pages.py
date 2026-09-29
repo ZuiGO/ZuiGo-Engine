@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query
 
 from backend.db.mongo import get_db
+from backend.services.page_architecture import build_product_architecture
 
 router = APIRouter(prefix="/api/pages", tags=["pages"])
 
@@ -11,6 +12,22 @@ _SORTABLE = {
     "click_depth": "click_depth",
     "page_type": "page_type",
 }
+
+
+@router.get("/{job_id}/architecture")
+async def get_product_architecture(job_id: str):
+    """Return the crawl-backed Family → Category → Model product tree."""
+    db = get_db()
+    pages = await db.pages.find(
+        {"job_id": job_id},
+        {
+            "url": 1,
+            "title": 1,
+            "status_code": 1,
+            "html": 1,
+        },
+    ).to_list(length=None)
+    return build_product_architecture(pages)
 
 
 @router.get("/{job_id}/all")

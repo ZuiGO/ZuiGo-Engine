@@ -12,7 +12,7 @@ logger = get_logger("link_checker")
 
 CHECK_CONCURRENCY = 10
 REQUEST_TIMEOUT = 7
-USER_AGENT = "ZuiGO-Engine/1.0 link-checker (+https://zuigo.ai)"
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
 RETRY_ATTEMPTS = 3
 RETRY_BACKOFF = 0.5
 RETRY_STATUS_CODES = frozenset({500, 502, 503, 504})

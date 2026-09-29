@@ -740,6 +740,112 @@ body {
   flex-wrap: wrap;
 }
 
+/* Crawl-backed product structure in the Pages view. */
+.page-architecture { margin: 0 0 18px; }
+.architecture-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--elevation-1);
+  padding: 18px;
+}
+.architecture-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.architecture-kicker {
+  color: var(--text-secondary);
+  font: 700 11px/1.2 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.architecture-heading h3 { margin: 4px 0; font-size: 18px; color: var(--text-primary); }
+.architecture-heading p, .architecture-evidence, .architecture-empty, .architecture-no-models {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.architecture-stats { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.architecture-stats span, .architecture-count {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font: 12px/1.2 var(--font-mono);
+  padding: 5px 8px;
+  white-space: nowrap;
+}
+.architecture-stats strong { color: var(--text-primary); }
+.architecture-evidence { margin-top: 10px; }
+.architecture-warning, .architecture-unavailable, .architecture-loading {
+  background: var(--status-redirect-soft);
+  border: 1px solid var(--status-redirect);
+  border-radius: var(--radius-sm);
+  color: var(--status-redirect-text);
+  font-size: 13px;
+  line-height: 1.4;
+  margin-top: 10px;
+  padding: 9px 11px;
+}
+.architecture-loading { margin-bottom: 18px; }
+.architecture-unavailable { border-color: var(--border); background: var(--bg-elevated); color: var(--text-secondary); }
+.architecture-tree { display: grid; gap: 10px; margin-top: 14px; }
+.architecture-family, .architecture-category {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+.architecture-family > summary, .architecture-category > summary {
+  align-items: center;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  font-size: 14px;
+  font-weight: 700;
+  justify-content: space-between;
+  list-style: none;
+  padding: 11px 12px;
+}
+.architecture-family > summary::-webkit-details-marker, .architecture-category > summary::-webkit-details-marker { display: none; }
+.architecture-family > summary::before, .architecture-category > summary::before {
+  color: var(--text-secondary);
+  content: "›";
+  font-size: 18px;
+  margin-right: 7px;
+  transform: rotate(0deg);
+}
+.architecture-family[open] > summary::before, .architecture-category[open] > summary::before { transform: rotate(90deg); }
+.architecture-family > summary > span:first-of-type, .architecture-category > summary > span:first-of-type { display: flex; align-items: center; }
+.architecture-family-index {
+  align-items: center;
+  background: var(--accent-glow);
+  border-radius: 5px;
+  color: var(--accent);
+  display: inline-flex;
+  font: 700 11px/1 var(--font-mono);
+  height: 21px;
+  justify-content: center;
+  margin-right: 8px;
+  width: 21px;
+}
+.architecture-family-body { border-top: 1px solid var(--border-soft); padding: 10px 12px 12px; }
+.architecture-meta { color: var(--text-secondary); font-size: 12px; line-height: 1.4; }
+.architecture-meta a, .architecture-models a { color: var(--accent); }
+.architecture-categories { display: grid; gap: 8px; margin-top: 10px; }
+.architecture-category { background: var(--bg-surface); }
+.architecture-category > summary { font-size: 13px; padding: 9px 10px; }
+.architecture-category-body { border-top: 1px solid var(--border-soft); padding: 9px 10px 10px; }
+.architecture-leaf-note { color: var(--status-ok-text); display: block; font-size: 12px; margin-top: 7px; }
+.architecture-no-models { margin-top: 7px; }
+.architecture-models { display: grid; gap: 6px; list-style: none; margin: 9px 0 0; padding: 0; }
+.architecture-models li { align-items: baseline; display: flex; font-size: 13px; gap: 8px; justify-content: space-between; }
+.architecture-models li span { color: var(--text-primary); min-width: 0; }
+.architecture-models a { font: 11px/1.2 var(--font-mono); flex: 0 1 46%; overflow: hidden; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 600px) {
+  .architecture-heading { flex-direction: column; }
+  .architecture-stats { justify-content: flex-start; }
+  .architecture-models li { align-items: flex-start; flex-direction: column; gap: 3px; }
+  .architecture-models a { max-width: 100%; text-align: left; }
+}
+
 .search-input, .filter-select {
   padding: 9px 14px;
   border: 1px solid var(--border);
@@ -4343,4 +4449,3 @@ body.jobless #rail-nav { display: none; }
   max-height: 1000px;
   border-top: 1px solid var(--border-color);
 }
-

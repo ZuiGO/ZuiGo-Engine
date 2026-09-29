@@ -42,6 +42,13 @@ async def audit_image_optimization(job_id: str) -> dict:
     occurrences = 0
     seen: set[str] = set()
 
+    alt_missing_urls = []
+    dims_missing_urls = []
+    legacy_format_urls = []
+    non_lazy_urls = []
+
+    images = {}
+
     for p in pages:
         html = p.get("html") or ""
         if not html:
@@ -57,30 +64,57 @@ async def audit_image_optimization(job_id: str) -> dict:
             key = _resolve(p.get("url", ""), src)
             if not key:
                 continue
-            if key in seen:
-                continue
-            seen.add(key)
-            total_imgs += 1
+            
+            if key not in images:
+                images[key] = {
+                    "alt_missing": False,
+                    "lazy": False,
+                    "modern": False,
+                    "dims_missing": False,
+                }
+                
+            state = images[key]
+            
             if not img.has_attr("alt"):
-                alt_missing += 1
-            srcset = (img.get("srcset") or "").strip().lower()
+                state["alt_missing"] = True
+                
             loading = (img.get("loading") or "").strip().lower()
             if loading == "lazy":
-                lazy_imgs += 1
+                state["lazy"] = True
+                
+            srcset = (img.get("srcset") or "").strip().lower()
             if any(key.lower().endswith(ext) or ext in srcset for ext in MODERN_EXT):
-                modern_imgs += 1
-                continue
-            picture = next(
-                (a for a in (img.parents if img.parent is not None else iter(()))
-                 if getattr(a, "name", "") == "picture"),
-                None,
-            )
-            if picture is not None:
-                sources = picture.find_all("source")
-                if any((s.get("type") or "").lower() in ("image/webp", "image/avif") for s in sources):
-                    modern_imgs += 1
+                state["modern"] = True
+            else:
+                picture = next(
+                    (a for a in (img.parents if img.parent is not None else iter(()))
+                     if getattr(a, "name", "") == "picture"),
+                    None,
+                )
+                if picture is not None:
+                    sources = picture.find_all("source")
+                    if any((s.get("type") or "").lower() in ("image/webp", "image/avif") for s in sources):
+                        state["modern"] = True
+                        
             if not (img.get("width") and img.get("height")):
-                dims_missing += 1
+                state["dims_missing"] = True
+
+    total_imgs = len(images)
+    for key, state in images.items():
+        if state["alt_missing"]:
+            alt_missing += 1
+            if len(alt_missing_urls) < 20: alt_missing_urls.append(key)
+        if state["lazy"]:
+            lazy_imgs += 1
+        elif len(non_lazy_urls) < 20:
+            non_lazy_urls.append(key)
+        if state["modern"]:
+            modern_imgs += 1
+        elif len(legacy_format_urls) < 20:
+            legacy_format_urls.append(key)
+        if state["dims_missing"]:
+            dims_missing += 1
+            if len(dims_missing_urls) < 20: dims_missing_urls.append(key)
 
     total = max(total_imgs, 1)
     modern_share = modern_imgs / total if total_imgs else 0
@@ -101,21 +135,25 @@ async def audit_image_optimization(job_id: str) -> dict:
             "label": "Modern image formats (WebP/AVIF)",
             "detail": (f"{modern_imgs} of {total_imgs} unique image(s) use WebP/AVIF."
                        if total_imgs else "No images found to evaluate."),
+            "evidence": legacy_format_urls
         },
         {
             "passed": lazy_share >= 0.5,
             "label": "Lazy loading on below-the-fold images",
             "detail": f"{lazy_imgs} of {total_imgs} unique image(s) load lazily.",
+            "evidence": non_lazy_urls
         },
         {
             "passed": dim_share <= 0.3,
             "label": "Width/height attributes set (CLS reduction)",
             "detail": f"{dims_missing} of {total_imgs} unique image(s) lack explicit dimensions.",
+            "evidence": dims_missing_urls
         },
         {
             "passed": alt_share <= 0.3,
             "label": "Descriptive alt text on images",
             "detail": f"{alt_missing} of {total_imgs} unique image(s) are missing alt text.",
+            "evidence": alt_missing_urls
         },
     ]
 

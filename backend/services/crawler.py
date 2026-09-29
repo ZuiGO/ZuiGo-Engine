@@ -100,7 +100,7 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
                 text = await _fetch(cand, auth=_httpx_auth)
                 if not text:
                     continue
-                urls = await _parse_sitemap_urls(text, auth=_httpx_auth)
+                urls = await _parse_sitemap_urls(text, auth=_httpx_auth, origin=f"{parsed.scheme}://{parsed.netloc}")
                 if not urls:
                     continue
                 for u in urls:
@@ -120,20 +120,13 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
             logger.warning("Sitemap seeding failed job=%s: %s", job_id, e)
 
     if unlimited:
-        hard_cap = settings.competitor_crawl_max_pages
-        if sitemap_urls:
-            ceiling = min(max(len(sitemap_urls) + max(10, int(len(sitemap_urls) * 0.1)), max_pages or 0), hard_cap)
-        else:
-            ceiling = hard_cap
+        ceiling = float('inf')
     elif max_pages is None:
-        ceiling = settings.crawl_max_pages
-        if sitemap_urls:
-            ceiling = min(max(ceiling, len(sitemap_urls)), settings.competitor_crawl_max_pages)
+        ceiling = float('inf')
     else:
         ceiling = max_pages
-        if sitemap_urls:
-            ceiling = min(max(ceiling, len(sitemap_urls) + max(10, int(len(sitemap_urls) * 0.1))), settings.competitor_crawl_max_pages)
-    progress_denom = ceiling
+    
+    progress_denom = ceiling if ceiling != float('inf') else (len(sitemap_urls) or 0)
     logger.info("Crawl ceiling job=%s ceiling=%s sitemap=%s unlimited=%s", job_id, ceiling, len(sitemap_urls), unlimited)
 
     async def update_progress(crawled: int, msg: str):

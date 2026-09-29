@@ -380,6 +380,23 @@ async def _report_html(job_id: str):
     cwv_detail = (
         "%s page(s)" % hm.get("cwv_pages_checked") if hm.get("cwv_pages_checked") else "N/A"
     )
+
+    cwv_details_html = ""
+    if perf_summary and perf_summary.get("cwv_pages"):
+        rows = []
+        for p in perf_summary["cwv_pages"]:
+            rows.append(
+                "<tr><td class='mono'>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+                    p.get("url", "-"),
+                    f"{round(p.get('lcp', 0) / 1000, 2)}s" if p.get("lcp") else "-",
+                    f"{round(p.get('inp', 0))}ms" if p.get("inp") else "-",
+                    str(p.get("cls", "-"))
+                )
+            )
+        cwv_details_html = (
+            "<h2 class='section-title'>Core Web Vitals Details</h2>"
+            "<table><tr><th>URL</th><th>LCP</th><th>INP</th><th>CLS</th></tr>%s</table>" % "".join(rows)
+        )
     kw_count = len(insights.get("keywords") or [])
     method_rows = "".join([
         "<tr><td>Pages Crawled</td><td>%s</td><td>measured</td><td>BFS crawl + XML sitemap seed</td></tr>" % _esc(page_count),
@@ -756,7 +773,7 @@ async def _report_html(job_id: str):
         + '<h2 class="section-title">Page-Type Breakdown</h2>'
         '<table><tr><th>Page type</th><th>Count</th></tr>%s</table>' % page_type_rows
         + insights_html + ov_html + gsc_html
-        + sitemap_html + ai_html + local_html + hreflang_html + url_hygiene_html + image_opt_html + programmatic_html
+        + cwv_details_html + sitemap_html + ai_html + local_html + hreflang_html + url_hygiene_html + image_opt_html + programmatic_html
         + '<h2 class="section-title">User Flows</h2>'
         '<table><tr><th>Target type</th><th>Depth</th><th>Visits</th><th>Target URL</th></tr>%s</table>'
         % flow_rows

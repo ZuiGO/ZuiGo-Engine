@@ -62,6 +62,37 @@ def compute_page_signals(html: str) -> dict:
     unordered_lists = len(soup.select("ul"))
     ordered_lists = len(soup.select("ol"))
 
+    # AEO (AI Engine Optimization) Checks
+    paragraphs = [p.get_text(" ", strip=True) for p in soup.find_all("p")]
+    paragraphs = [p for p in paragraphs if p]
+    
+    first_p = paragraphs[0] if paragraphs else ""
+    first_p_words = len(first_p.split())
+    answer_first = False
+    if first_p and first_p_words <= 40:
+        answer_first = True
+        
+    total_words = sum(len(p.split()) for p in paragraphs)
+    facts_count = 0
+    for p in paragraphs:
+        # Simple heuristic: look for numbers with units or standards (e.g. 10mm, 40bar, 316L, ASTM)
+        if re.search(r'\b\d+(mm|bar|psi|kg|lbs|l|c|f|v|w)\b', p, re.I) or re.search(r'\b(astm|iso|din|bs|en|pn|dn|nb)\b', p, re.I):
+            facts_count += 1
+            
+    fact_density = (facts_count / total_words * 100) if total_words > 0 else 0
+    has_high_fact_density = fact_density >= 1.5
+
+    # Self-Contained Chunks: Check if headings are followed by text that doesn't start with an orphaned pronoun
+    orphaned_pronouns = {"it", "this", "they", "these", "those"}
+    self_contained = True
+    for h in soup.find_all(["h2", "h3"]):
+        next_sibling = h.find_next_sibling("p")
+        if next_sibling:
+            first_word = next_sibling.get_text(strip=True).split()[0].lower() if next_sibling.get_text(strip=True) else ""
+            if first_word in orphaned_pronouns:
+                self_contained = False
+                break
+
     return {
         "present": present,
         "missing_signals": missing,
@@ -70,6 +101,10 @@ def compute_page_signals(html: str) -> dict:
         "tables": tables,
         "lists": unordered_lists + ordered_lists,
         "definition_lists": definition_lists,
+        "answer_first": answer_first,
+        "fact_density": fact_density,
+        "has_high_fact_density": has_high_fact_density,
+        "self_contained": self_contained,
     }
 
 

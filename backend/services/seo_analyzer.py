@@ -200,17 +200,27 @@ def run_page_checks(page: dict, ctx: dict | None = None) -> list[dict]:
     meta = (p.get("meta_description") or "").strip()
     indexable = p.get("is_indexable", True)
 
-    if indexable and word_count < THIN_WORDS:
+    page_type = p.get("page_type", "").lower()
+    if "product" in page_type or "item" in page_type:
+        min_words = 150
+    elif "industry" in page_type or "category" in page_type:
+        min_words = 700
+    elif "legal" in page_type or "utility" in page_type:
+        min_words = 50
+    else:
+        min_words = 350
+
+    if indexable and word_count < min_words:
         checks.append({
             "issue_key": "thin_content",
             "impact": "medium",
             "confidence": 0.9,
-            "identified_issues": [f"Thin content: {word_count} words is below the {THIN_WORDS}-word minimum"],
+            "identified_issues": [f"Thin content ({page_type}): {word_count} words is below the {min_words}-word minimum"],
             "improvement_suggestions": [
-                "Expand the page to 600+ words of unique value",
+                f"Expand the page to {min_words}+ words of unique value",
                 "Add supporting H2/H3 sections covering related subtopics",
             ],
-            "evidence": {"word_count": word_count},
+            "evidence": {"word_count": word_count, "page_type": page_type, "min_words": min_words},
         })
     if not meta:
         checks.append({
@@ -269,6 +279,23 @@ def run_page_checks(page: dict, ctx: dict | None = None) -> list[dict]:
             "improvement_suggestions": ["Confirm this page is intentionally excluded from indexing"],
             "evidence": {"is_indexable": False},
         })
+        
+    # Staging Containment / Leakage Check
+    import urllib.parse
+    parsed_url = urllib.parse.urlparse(p.get("url", ""))
+    domain = parsed_url.netloc.lower()
+    is_staging = any(sub in domain for sub in ["staging", "test", "dev", "sandbox"])
+    if is_staging and indexable:
+        checks.append({
+            "issue_key": "staging_leakage",
+            "impact": "high",
+            "confidence": 1.0,
+            "identified_issues": [f"Staging environment ({domain}) is indexable"],
+            "improvement_suggestions": [
+                "Apply the 3 containment layers: 1) HTTP Basic Auth, 2) X-Robots-Tag: noindex, 3) robots.txt Disallow: /"
+            ],
+            "evidence": {"domain": domain, "is_indexable": indexable},
+        })
     sd = ctx.get("sd") or {}
     if indexable and sd.get(p.get("url", "")) is False:
         checks.append({
@@ -298,6 +325,61 @@ def run_page_checks(page: dict, ctx: dict | None = None) -> list[dict]:
                 ],
                 "evidence": {"corpus_keywords": corpus[:10], "matched": 0},
             })
+
+        # Keyword Cannibalization Check
+        keyword_to_urls = ctx.get("keyword_to_urls") or {}
+        for kw in matched:
+            kw_lower = kw.lower()
+            competitors = keyword_to_urls.get(kw_lower, [])
+            if len(competitors) > 1 and p.get("url", "") in competitors:
+                # If there are multiple pages targeting this exact keyword in their title
+                checks.append({
+                    "issue_key": "keyword_cannibalization",
+                    "impact": "high",
+                    "confidence": 0.9,
+                    "identified_issues": [f"Multiple pages are competing for the exact same focus keyword: '{kw}'"],
+                    "improvement_suggestions": [
+                        "Ensure 'One page, one focus term'. De-optimize competing pages or merge them.",
+                        "Change the focus keyword for this page to a distinct long-tail variation."
+                    ],
+                    "evidence": {"cannibalized_keyword": kw, "competing_urls": competitors},
+                })
+
+    # AEO Checks from content_signals
+    eaat = ctx.get("eaat") or {}
+    page_eaat = eaat.get(p.get("url", "")) or {}
+    
+    if page_eaat:
+        if not page_eaat.get("answer_first", True):
+            checks.append({
+                "issue_key": "aeo_answer_first_missing",
+                "impact": "low",
+                "confidence": 0.9,
+                "identified_issues": ["The opening sentence does not directly answer a topic in <40 words"],
+                "improvement_suggestions": ["Rewrite the first paragraph to directly answer the user's intent within the first 40 words"],
+                "evidence": {"answer_first": False},
+            })
+            
+        if not page_eaat.get("has_high_fact_density", True):
+            checks.append({
+                "issue_key": "aeo_fact_density_low",
+                "impact": "low",
+                "confidence": 0.8,
+                "identified_issues": [f"Fact density is too low ({page_eaat.get('fact_density', 0):.1f} per 100 words, target >=1.5)"],
+                "improvement_suggestions": ["Add more concrete facts (numbers, dimensions, standards) to make the text citable by AI engines"],
+                "evidence": {"fact_density": page_eaat.get("fact_density", 0)},
+            })
+            
+        if not page_eaat.get("self_contained", True):
+            checks.append({
+                "issue_key": "aeo_orphaned_pronouns",
+                "impact": "low",
+                "confidence": 0.9,
+                "identified_issues": ["Headings are followed by orphaned pronouns (e.g., 'It', 'This')"],
+                "improvement_suggestions": ["Replace orphaned pronouns with explicit entities so the chunk is self-contained when retrieved by an AI engine"],
+                "evidence": {"self_contained": False},
+            })
+
     total_imgs = p.get("image_count") or 0
     missing = p.get("images_missing_alt") or 0
     if total_imgs > 0 and missing / total_imgs > 0.3:
@@ -502,9 +584,21 @@ async def analyze_pages(job_id: str) -> dict:
             except Exception as sd_err:
                 logger.warning("Structured data check failed page=%s: %s", p.get("url"), sd_err)
     corpus_keywords = []
+    keyword_to_urls = {}
     try:
         from backend.services.keyword_extractor import extract_keywords_from_content
         corpus_keywords = await extract_keywords_from_content(job_id, top_k=20)
+        
+        # Build cannibalization map
+        for kw in corpus_keywords:
+            kw_lower = kw.lower()
+            keyword_to_urls[kw_lower] = []
+            for p in pages:
+                if not p.get("is_indexable", True):
+                    continue
+                title = (p.get("title") or "").lower()
+                if kw_lower in title:
+                    keyword_to_urls[kw_lower].append(p.get("url", ""))
     except Exception as k_err:
         logger.warning("Corpus keywords unavailable job=%s: %s", job_id, k_err)
 
@@ -522,6 +616,7 @@ async def analyze_pages(job_id: str) -> dict:
         "meta_counts": meta_counts,
         "sd": sd_map,
         "corpus_keywords": corpus_keywords,
+        "keyword_to_urls": keyword_to_urls,
         "eaat": eaat_map,
         "extractable": extractable_map,
     }

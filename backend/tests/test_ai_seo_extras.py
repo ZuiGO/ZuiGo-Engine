@@ -98,7 +98,7 @@ class TestAuditAiVisibility:
             }
         db._stores["sitemap_audits"]["s1"] = {"job_id": "j1", "sitemap_valid": True}
 
-        async def fake_fetch(url, ua):
+        async def fake_fetch(url, ua, auth=None):
             if "pricing.md" in url:
                 return ("# Pricing\n\nPro $29/month", 200)
             if "okf" in url:
@@ -121,7 +121,7 @@ class TestAuditAiVisibility:
     async def test_blocked_training_agents_reported(self, monkeypatch):
         db = FakeDb()
         monkeypatch.setattr(ai_mod, "get_db", lambda: db)
-        async def fake_fetch(url, ua):
+        async def fake_fetch(url, ua, auth=None):
             return (None, 404) if "robots" not in url else ("User-agent: CCBot\nDisallow: /\n", 200)
 
         monkeypatch.setattr(ai_mod, "_fetch_plain", fake_fetch)

@@ -73,7 +73,7 @@ class TestSitemapEntries:
         )
         called = {"n": 0}
 
-        async def fake_fetch(url: str):
+        async def fake_fetch(url: str, auth: tuple | None = None):
             called["n"] += 1
             return {"https://x.example/a.xml": child_a, "https://x.example/b.xml": child_b}.get(url)
 

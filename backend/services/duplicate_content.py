@@ -103,7 +103,8 @@ async def detect_duplicate_content(job_id: str) -> dict:
                     group.append(targets[j])
                     matched[j] = True
             if len(group) > 1:
-                groups.append({"urls": group, "similarity": "high"})
+                snippet = texts[i][:250] + "..." if len(texts[i]) > 250 else texts[i]
+                groups.append({"urls": group, "similarity": "high", "snippet": snippet})
                 for url in group:
                     matched[[k for k, t in enumerate(targets) if t == url][0]] = True
 

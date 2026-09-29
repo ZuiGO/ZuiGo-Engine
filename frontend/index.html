@@ -488,6 +488,7 @@
       </div>
 
       <div class="tab-content hidden" id="tab-pages">
+        <section id="page-architecture" class="page-architecture" aria-live="polite"></section>
         <div class="table-controls">
           <input type="text" id="pages-search" placeholder="Search pages..." class="search-input">
           <select id="pages-type-filter" class="filter-select"><option value="">All Types</option></select>
@@ -612,6 +613,7 @@
               <option value="unreachable">Unreachable</option>
               <option value="__external__">External links</option>
             </select>
+            <button id="export-links-btn" class="btn-secondary" style="font-size:12px;padding:4px 10px;margin-left:8px" onclick="event.stopPropagation()">Export to Excel</button>
           </summary>
           <div id="all-links-card" class="insights-card"></div>
         </details>

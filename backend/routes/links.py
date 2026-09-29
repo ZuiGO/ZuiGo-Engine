@@ -1,4 +1,7 @@
+import csv
+import io
 from fastapi import APIRouter, Query
+from fastapi.responses import StreamingResponse
 
 from backend.db.mongo import get_db
 from backend.services.backlinks import get_backlinks
@@ -75,6 +78,56 @@ async def all_links(job_id: str, status: str | None = None, external: bool | Non
             rows = [r for r in rows if r["external"] is external]
             total = len(rows)
     return {"total": total, "links": rows, "offset": offset, "limit": limit, "unchecked_count": unchecked_count}
+
+
+@router.get("/{job_id}/export")
+async def export_links_csv(job_id: str, status: str | None = None, external: bool | None = None):
+    db = get_db()
+    job = await db.analysis_jobs.find_one({"_id": job_id}, {"_id": 1})
+    if not job:
+        return {"error": "Job not found"}
+        
+    q: dict = {"job_id": job_id}
+    if status:
+        q["status"] = status
+    if external is not None:
+        q["external"] = external
+
+    async def csv_generator():
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["URL", "Status", "Status Code", "External", "Redirect Count", "Final URL", "Linked From"])
+        yield output.getvalue()
+        output.seek(0)
+        output.truncate(0)
+
+        cursor = db.link_health.find(q).sort("url", 1)
+        async for row in cursor:
+            pages = row.get("pages") or []
+            linked_from = "\n".join(pages)
+            
+            redirect_chain = row.get("redirect_chain") or []
+            final_url = row.get("final_url") or ""
+            if redirect_chain and not final_url:
+                final_url = redirect_chain[-1]
+                
+            writer.writerow([
+                row.get("url", ""),
+                row.get("status", "unchecked"),
+                row.get("status_code", ""),
+                "Yes" if row.get("external") else "No",
+                row.get("redirect_count", 0),
+                final_url,
+                linked_from
+            ])
+            yield output.getvalue()
+            output.seek(0)
+            output.truncate(0)
+
+    headers = {
+        "Content-Disposition": f"attachment; filename=links_export_{job_id}.csv"
+    }
+    return StreamingResponse(csv_generator(), media_type="text/csv", headers=headers)
 
 
 @router.get("/{job_id}/backlinks")

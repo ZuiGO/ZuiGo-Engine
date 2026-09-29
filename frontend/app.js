@@ -831,6 +831,7 @@ async function loadExecSummary(jobId) {
       <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <strong>${escapeHtml(it.title)}</strong> ${badge(it)} ${effortBadge(it)}
+          ${it.is_regression ? `<span style="padding:2px 8px;border-radius:10px;font-size:11px;background:#fecaca;color:#991b1b;border:1px solid #f87171" title="This issue is new or worse compared to the last audit">Regression ⚠️</span>` : ""}
           <span style="margin-left:auto;color:var(--text-secondary);font-size:12px">${escapeHtml(it.drive)}</span>
         </div>
         <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">→ ${escapeHtml(it.next_step)}</div>
@@ -1043,8 +1044,92 @@ function populatePageTypeFilter(types) {
   sel.dataset.built = "1";
 }
 
+function architectureSourceLabel(source) {
+  return source === "breadcrumb" ? "Breadcrumb evidence" : "URL structure fallback";
+}
+
+function renderProductArchitecture(architecture) {
+  const el = document.getElementById("page-architecture");
+  if (!el) return;
+  if (!architecture || !architecture.summary) {
+    el.innerHTML = '<div class="architecture-unavailable">Page architecture could not be loaded for this analysis.</div>';
+    return;
+  }
+
+  const summary = architecture.summary;
+  if (!summary.product_pages) {
+    el.innerHTML = `
+      <section class="architecture-panel">
+        <div class="architecture-heading"><div><p class="architecture-kicker">Crawl structure</p><h3>Product architecture</h3></div></div>
+        <p class="architecture-empty">No URLs under <code>/products</code> were found in this crawl.</p>
+      </section>`;
+    return;
+  }
+
+  const evidence = [
+    summary.from_breadcrumbs ? `${summary.from_breadcrumbs} from breadcrumbs` : "",
+    summary.from_url_fallback ? `${summary.from_url_fallback} from URL structure` : "",
+  ].filter(Boolean).join(" · ");
+  const familyHtml = (architecture.families || []).map(family => {
+    const categories = (family.categories || []).map(category => {
+      const models = (category.models || []).map(model => `
+        <li><span>${escapeHtml(model.name)}</span>${model.url ? linkify(model.url, 58) : ""}</li>
+      `).join("");
+      const leafNote = category.is_leaf_product
+        ? '<span class="architecture-leaf-note">Category page is the product page</span>'
+        : "";
+      return `
+        <details class="architecture-category">
+          <summary>
+            <span>${escapeHtml(category.name)}</span>
+            <span class="architecture-count">${category.models?.length || 0} model${(category.models?.length || 0) === 1 ? "" : "s"}</span>
+          </summary>
+          <div class="architecture-category-body">
+            <div class="architecture-meta">${architectureSourceLabel(category.source)}${category.url ? " · " + linkify(category.url, 62) : ""}</div>
+            ${leafNote}
+            ${models ? `<ul class="architecture-models">${models}</ul>` : '<p class="architecture-no-models">No model pages were observed below this category.</p>'}
+          </div>
+        </details>`;
+    }).join("");
+    return `
+      <details class="architecture-family" open>
+        <summary>
+          <span><span class="architecture-family-index">${escapeHtml(family.name.slice(0, 1).toUpperCase())}</span>${escapeHtml(family.name)}</span>
+          <span class="architecture-count">${family.categories?.length || 0} categor${(family.categories?.length || 0) === 1 ? "y" : "ies"}</span>
+        </summary>
+        <div class="architecture-family-body">
+          <div class="architecture-meta">${architectureSourceLabel(family.source)}${family.url ? " · " + linkify(family.url, 70) : ""}</div>
+          <div class="architecture-categories">${categories || '<p class="architecture-no-models">No category pages were observed below this family.</p>'}</div>
+        </div>
+      </details>`;
+  }).join("");
+
+  el.innerHTML = `
+    <section class="architecture-panel">
+      <div class="architecture-heading">
+        <div>
+          <p class="architecture-kicker">Crawl structure</p>
+          <h3>Product architecture</h3>
+          <p>${summary.product_pages} product URL${summary.product_pages === 1 ? "" : "s"} organised from the pages crawled.</p>
+        </div>
+        <div class="architecture-stats" aria-label="Product architecture summary">
+          <span><strong>${summary.families}</strong> families</span>
+          <span><strong>${summary.categories}</strong> categories</span>
+          <span><strong>${summary.model_pages}</strong> models</span>
+        </div>
+      </div>
+      <p class="architecture-evidence">Evidence: ${escapeHtml(evidence || "URL structure only")}.</p>
+      ${summary.leaf_categories ? `<p class="architecture-evidence">${summary.leaf_categories} categor${summary.leaf_categories === 1 ? "y is" : "ies are"} a product page with no model page below.</p>` : ""}
+      ${summary.unclassified ? `<p class="architecture-warning">${summary.unclassified} product URL${summary.unclassified === 1 ? " could" : "s could"} not be placed in the hierarchy.</p>` : ""}
+      <div class="architecture-tree">${familyHtml}</div>
+    </section>`;
+}
+
 async function loadPages(jobId) {
   const table = document.getElementById("pages-table");
+  const architectureEl = document.getElementById("page-architecture");
+  table.innerHTML = '<div class="skeleton skeleton-table"></div>';
+  if (architectureEl) architectureEl.innerHTML = '<div class="architecture-loading">Loading product architecture from crawled pages...</div>';
   const search = document.getElementById("pages-search").value.trim();
   const pageType = document.getElementById("pages-type-filter").value;
   const sort = document.getElementById("pages-sort").value;
@@ -1056,10 +1141,16 @@ async function loadPages(jobId) {
   if (order) params.set("order", order);
 
   let data;
+  let architecture = null;
   try {
-    const resp = await fetch(`${API_BASE}/pages/${jobId}/all?${params}`);
-    data = resp.ok ? await resp.json() : null;
+    const [pagesResp, architectureResp] = await Promise.all([
+      fetch(`${API_BASE}/pages/${jobId}/all?${params}`),
+      fetch(`${API_BASE}/pages/${jobId}/architecture`),
+    ]);
+    data = pagesResp.ok ? await pagesResp.json() : null;
+    architecture = architectureResp.ok ? await architectureResp.json() : null;
   } catch { data = null; }
+  renderProductArchitecture(architecture);
   if (!data) {
     table.innerHTML = '<div class="insights-card">Failed to load pages.</div>';
     return;
@@ -1415,6 +1506,16 @@ async function loadAllLinks(jobId, { reset } = {}) {
 
 document.getElementById("all-links-filter")?.addEventListener("change", () => {
   if (currentJobId) loadAllLinks(currentJobId, { reset: true });
+});
+
+document.getElementById("export-links-btn")?.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!currentJobId) return;
+  const params = new URLSearchParams();
+  if (allLinksStatus) params.set("status", allLinksStatus);
+  if (allLinksExternal != null) params.set("external", String(allLinksExternal));
+  window.location.href = `${API_BASE}/links/${currentJobId}/export?${params.toString()}`;
 });
 
 
@@ -2569,6 +2670,7 @@ function renderQuality(dup, sd, perf, geo, orphans, nested, decay, hl, uh, idx, 
                   ${(g.urls || []).slice(0, 10).map(u => `<li><a href="${u}" target="_blank" style="color:var(--text);text-decoration:underline;word-break:break-all">${escapeHtml(u)}</a></li>`).join("")}
                   ${(g.urls || []).length > 10 ? `<li><span class="count-label">+${g.urls.length - 10} more</span></li>` : ""}
                 </ul>
+                ${g.snippet ? `<div style="margin-top:8px;padding:8px;background:var(--bg-elevated);border-left:3px solid var(--border);color:var(--text-secondary);font-size:11px;font-family:monospace;white-space:pre-wrap;word-break:break-all;"><strong>Shared Content Snippet:</strong>\n${escapeHtml(g.snippet)}</div>` : ""}
               </div>
               <span class="count-label" style="margin-top:4px">similarity: ${escapeHtml(g.similarity || "high")}</span>
             </div>`).join("")}</details>`

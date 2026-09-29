@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     groq_cost_per_million: float = 0.0
     staging_user: str = ""
     staging_password: str = ""
-    crawl_max_pages: int = 50
+    crawl_max_pages: int = 2496
     crawl_concurrency: int = 5
     crawl_timeout_seconds: int = 360
     crawl_politeness_delay: float = 0.5
@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     download_concurrency: int = 6
     psi_concurrency: int = 5
     extract_workers: int = 4
-    competitor_crawl_max_pages: int = 400
+    competitor_crawl_max_pages: int = 2496
     competitor_psi_all_pages: bool = False
     competitor_psi_sample: int = 10
     competitor_timeout_seconds: int = 1200

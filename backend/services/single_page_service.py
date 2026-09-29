@@ -89,6 +89,8 @@ async def generate_suggestions(title: str, h1: str, desc: str, h2: str, p_text: 
         5. Image Alt Text: Write a dense, highly descriptive alt text naturally packed with primary semantic keywords for Google Images ranking.
         6. Meta Description: Craft a magnetic description (under 160 chars) that creates extreme urgency and forces the searcher to click.
 
+        CRITICAL GROUNDED DRAFTING RULE: You must be STRICTLY GROUNDED. Do not hallucinate or invent product specifications, facts, or numbers. Only use facts, specs, and materials already present in the CURRENT CONTENT.
+
         IMPORTANT: Do NOT use generic placeholders or simply append words like "Premium". Actually write compelling copy!
         Return ONLY a raw JSON object with keys: "title", "h1", "meta_description", "h2", "p_text", "img_alt".
         """

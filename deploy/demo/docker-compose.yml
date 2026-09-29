@@ -36,7 +36,7 @@ services:
     image: mongo:7
     volumes:
       - ../../seed:/seed:ro
-    command: mongorestore --host mongodb:27017 --nsInclude="rankengine.*" --drop /seed/dump
+    command: mongorestore --host mongodb:27017 --nsInclude="rankengine.*" /seed/dump
     depends_on:
       mongodb:
         condition: service_healthy

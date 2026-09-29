@@ -24,19 +24,23 @@ import base64
 
 async def _fetch(url: str, auth: tuple | None = None) -> str | None:
     headers = {"User-Agent": USER_AGENT}
-        
-    try:
-        async with httpx.AsyncClient(timeout=TIMEOUT, follow_redirects=True, headers=headers, auth=auth) as client:
-            resp = await client.get(url)
-        if resp.status_code != 200:
-            logger.warning("Sitemap fetch failed for %s with status %s", url, resp.status_code)
+    import asyncio
+    for attempt in range(3):
+        try:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, headers=headers, auth=auth) as client:
+                resp = await client.get(url)
+            if resp.status_code != 200:
+                logger.warning("Sitemap fetch failed for %s with status %s", url, resp.status_code)
+                return None
+            if len(resp.content) > MAX_SITEMAP_BYTES:
+                return None
+            return resp.text
+        except Exception as e:
+            if attempt < 2:
+                await asyncio.sleep(2)
+                continue
+            logger.error("Sitemap fetch exception: %s", repr(e))
             return None
-        if len(resp.content) > MAX_SITEMAP_BYTES:
-            return None
-        return resp.text
-    except Exception as e:
-        logger.error("Sitemap fetch exception: %s", e)
-        return None
 
 async def _parse_sitemap_urls(xml_text: str, auth: tuple | None = None, origin: str | None = None) -> list[str] | None:
     """Return URL list, or None if the body is not valid XML; [] if valid but empty."""

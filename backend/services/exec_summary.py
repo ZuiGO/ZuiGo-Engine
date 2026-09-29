@@ -58,6 +58,11 @@ EFFORT = {
     "programmatic_linking": ("low", "Link programmatic pages from hub categories (hub-and-spoke)"),
     "ai_pricing_md": ("low", "Publish a /pricing.md file for AI agents"),
     "ai_eaat_signals": ("low", "Add author attribution and freshness dates for AI citation"),
+    "aeo_answer_first_missing": ("medium", "Rewrite opening paragraphs to answer intent directly"),
+    "aeo_fact_density_low": ("high", "Add concrete facts and specs to increase AI extractability"),
+    "aeo_orphaned_pronouns": ("low", "Replace orphaned pronouns with explicit entities"),
+    "keyword_cannibalization": ("high", "Merge or de-optimize competing pages"),
+    "staging_leakage": ("high", "Enforce 3 layers of staging containment"),
     "pending_actions": ("low", "Review and act on open action items"),
     "site_issue": ("medium", "Investigate the flagged site issue"),
 }
@@ -105,10 +110,15 @@ TITLES = {
     "programmatic_thin": "Thin programmatic template pages",
     "programmatic_duplicates": "Duplicate programmatic pages",
     "programmatic_linking": "Unlinked programmatic pages",
-    "ai_pricing_md": "No machine-readable pricing for AI agents",
-    "ai_eaat_signals": "Missing AI-citation trust signals",
-    "pending_actions": "Unresolved actions",
-    "site_issue": "Site issue",
+    "ai_pricing_md": "Missing pricing.md",
+    "ai_eaat_signals": "Weak AI E-E-A-T signals",
+    "aeo_answer_first_missing": "Missing answer-first copy",
+    "aeo_fact_density_low": "Low fact density",
+    "aeo_orphaned_pronouns": "Orphaned pronouns in chunks",
+    "keyword_cannibalization": "Keyword cannibalization",
+    "staging_leakage": "Staging environment leakage",
+    "pending_actions": "Pending fixes",
+    "site_issue": "Site issues",
 }
 
 ISSUE_KEY_FROM_MESSAGE = [
@@ -195,6 +205,11 @@ EXPLANATIONS = {
     "programmatic_linking": "Programmatic spokes need strong hub links and cross-links; orphaned template pages are barely crawled and rarely rank.",
     "ai_pricing_md": "AI agents compare products programmatically; hidden or unparsable pricing gets them filtered out of AI-mediated buying journeys.",
     "ai_eaat_signals": "AI systems prefer citable, trustworthy sources; undated, unattributed content loses out to expert and fresh alternative.",
+    "aeo_answer_first_missing": "Generative engines and featured snippets prioritize content that answers the core intent immediately before expanding on details.",
+    "aeo_fact_density_low": "Content lacking concrete facts, statistics, or specifications is rarely extracted by LLMs as a definitive answer.",
+    "aeo_orphaned_pronouns": "AI engines retrieve paragraphs out of context; sentences starting with 'It' or 'This' lose their meaning without the preceding text.",
+    "keyword_cannibalization": "Multiple pages fighting for the same keyword confuse search engines and dilute your ranking power across them.",
+    "staging_leakage": "An indexable staging site causes massive duplicate content issues and can accidentally outrank the production site.",
     "pending_actions": "Open action items represent confirmed fixes that are not yet applied - each one is captured traffic risk.",
     "site_issue": "A flagged site-level issue may affect many pages at once and should be investigated first.",
 }
@@ -245,6 +260,11 @@ HOW_TO_FIX = {
     "programmatic_linking": ["Map each programmatic page to a hub category", "Add contextual links from hub and related spokes", "Keep XML sitemap + breadcrumbs covering all of them"],
     "ai_pricing_md": ["Create a /pricing.md or /pricing.txt file", "List tiers, prices, limits, and included features in plain text", "Link to it from the pricing page and sitemap"],
     "ai_eaat_signals": ["Add author names and credentials to articles", "Show a visible last-updated date", "Add Article/author structured data"],
+    "aeo_answer_first_missing": ["Move the core answer to the first sentence", "Keep the opening paragraph under 40 words", "Remove preamble and fluff"],
+    "aeo_fact_density_low": ["Inject concrete facts, numbers, dimensions, or standards", "Ensure there are at least 1.5 hard facts per 100 words"],
+    "aeo_orphaned_pronouns": ["Replace starting pronouns ('It', 'This') with explicit entities", "Ensure each paragraph makes sense when retrieved out of context"],
+    "keyword_cannibalization": ["Identify the primary page for the focus keyword", "De-optimize competing pages (change their title/H1)", "Consolidate duplicate pages with 301 redirects"],
+    "staging_leakage": ["Add HTTP Basic Auth to the staging site", "Add X-Robots-Tag: noindex header", "Add robots.txt Disallow: /"],
     "site_issue": ["Investigate the flagged issue", "Fix the root cause", "Re-run the audit to confirm"],
 }
 
@@ -450,6 +470,32 @@ async def compute_exec_summary(job_id: str) -> dict | None:
         it["how_to_fix"] = HOW_TO_FIX.get(key, ["Investigate the flagged issue", "Apply a fix", "Re-run the audit"])
         it["evidence"] = evidence_cache[key]
 
+    # Find previous job for this URL to track regressions
+    previous_job = await db.analysis_jobs.find_one(
+        {"url": job.get("url"), "_id": {"$ne": job_id}},
+        sort=[("created_at", -1)]
+    )
+    previous_summary = None
+    if previous_job:
+        previous_summary = await db.exec_summaries.find_one({"job_id": previous_job["_id"]})
+
+    prev_issues = {}
+    if previous_summary:
+        for it in previous_summary.get("all_issues", []):
+            drive_str = str(it.get("drive", "0")).split(" ")[0]
+            prev_issues[it["issue_key"]] = int(drive_str) if drive_str.isdigit() else 1
+
+    for it in issues:
+        key = it["issue_key"]
+        drive_str = str(it.get("drive", "0")).split(" ")[0]
+        current_n = int(drive_str) if drive_str.isdigit() else 1
+        prev_n = prev_issues.get(key, 0)
+        # Flag as regression if the issue is new or the count increased
+        if previous_summary is not None and current_n > prev_n:
+            it["is_regression"] = True
+        else:
+            it["is_regression"] = False
+
     issues.sort(key=lambda i: (-i["weight"], -IMPACT_WEIGHT[i["impact"]]))
 
     top_issues = issues[:5]
@@ -457,9 +503,7 @@ async def compute_exec_summary(job_id: str) -> dict | None:
     quick_wins = [i for i in issues if i["effort"] == "low" and IMPACT_WEIGHT[i["impact"]] >= 2][:5]
     long_term = [i for i in issues if i["effort"] == "high"][:5]
 
-    cursor2 = db.site_health.find({"job_id": job_id}).sort("generated_at", -1).limit(2)
-    history = await cursor2.to_list(length=2)
-    previous_score = history[1].get("score") if len(history) > 1 else None
+    previous_score = previous_summary.get("score") if previous_summary else None
     score = health.get("score")
     direction = "stable"
     if score is not None and previous_score is not None:

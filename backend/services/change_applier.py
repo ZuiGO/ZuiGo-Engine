@@ -127,7 +127,8 @@ async def _groq_generate(item: dict, field: str) -> str | None:
                     "role": "system",
                     "content": (
                         "You generate SEO content fixes. Respond with STRICT JSON only: "
-                        '{"field": "<field name>", "after": "<improved text>"}'
+                        '{"field": "<field name>", "after": "<improved text>"}\n'
+                        "CRITICAL GROUNDED DRAFTING RULE: You must be STRICTLY GROUNDED. Do not hallucinate or invent product specifications, facts, or numbers. Only use facts, specs, and materials already present in the Context."
                     ),
                 },
                 {

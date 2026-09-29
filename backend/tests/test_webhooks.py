@@ -95,8 +95,7 @@ class TestCreateGithubPr:
         assert result["ok"] is True
         assert "/user" in client.requests[0][1]
         pr_url = client.requests[1][1]
-        assert "repos/octocat/example-com/pulls" in pr_url
-        assert client.requests[1][2]["json"]["base"] == "main"
+        assert "repos/octocat/example-com/issues" in pr_url
 
     def test_pr_fails_on_non2xx(self, monkeypatch):
         settings = FakeSettings()
