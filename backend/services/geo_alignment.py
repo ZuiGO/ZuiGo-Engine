@@ -123,7 +123,7 @@ async def audit_geo_alignment(job_id: str) -> dict:
         async with sem_page:
             return await analyze_page(p)
 
-    pages_iter = [p for p in pages if p.get("page_type") != "home"]
+    pages_iter = [p for p in pages if p.get("page_type") != "home"][:150]
     report = list(await asyncio.gather(*(bounded(p) for p in pages_iter)))
     off_topic_pages = sum(1 for r in report if r.get("off_topic"))
 

@@ -37,20 +37,28 @@ async def download_content(source_url: str, job_id: str, page_url: str) -> dict 
         return None
 
 
+_probe_client = None
+
+def _get_probe_client() -> httpx.AsyncClient:
+    global _probe_client
+    if _probe_client is None:
+        _probe_client = httpx.AsyncClient(timeout=15.0, follow_redirects=True, limits=httpx.Limits(max_connections=200, max_keepalive_connections=50))
+    return _probe_client
+
 async def probe_content(source_url: str, job_id: str, page_url: str) -> dict | None:
     """Metadata-only probe: size + mime via HEAD (GET-stream fallback), no body stored."""
     try:
-        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
-            resp = await client.head(source_url)
-            if resp.status_code >= 400:
-                resp = await client.get(source_url)
-            mime = resp.headers.get("content-type", "")
-            size_hdr = resp.headers.get("content-length")
-            return {
-                "file_path": None,
-                "file_size": int(size_hdr) if size_hdr and size_hdr.isdigit() else None,
-                "mime_type": mime,
-                "filename": None,
-            }
+        client = _get_probe_client()
+        resp = await client.head(source_url)
+        if resp.status_code >= 400:
+            resp = await client.get(source_url)
+        mime = resp.headers.get("content-type", "")
+        size_hdr = resp.headers.get("content-length")
+        return {
+            "file_path": None,
+            "file_size": int(size_hdr) if size_hdr and size_hdr.isdigit() else None,
+            "mime_type": mime,
+            "filename": None,
+        }
     except Exception:
         return None

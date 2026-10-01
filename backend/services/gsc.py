@@ -130,6 +130,39 @@ async def exchange_code(code: str, job_id: str, redirect_uri: str | None = None)
 
 
 async def _valid_access_token(domain: str) -> str | None:
+    if settings.gsc_service_account_file:
+        try:
+            import google.auth
+            from google.oauth2 import service_account
+            from google.auth.transport.requests import Request
+            import os
+            
+            # Check if file exists, if not relative to root
+            filepath = settings.gsc_service_account_file
+            if not os.path.exists(filepath):
+                # Try relative to backend dir or project root
+                filepath = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), settings.gsc_service_account_file)
+                
+            creds = service_account.Credentials.from_service_account_file(filepath, scopes=[SCOPE])
+            creds.refresh(Request())
+            return creds.token
+        except Exception as e:
+            logger.error("Failed to get token from service account %s: %s", settings.gsc_service_account_file, e)
+
+    if settings.gsc_refresh_token:
+        try:
+            cfg = await get_gsc_config()
+            if cfg["client_id"] and cfg["client_secret"]:
+                data = await _token_post({
+                    "client_id": cfg["client_id"],
+                    "client_secret": cfg["client_secret"],
+                    "refresh_token": settings.gsc_refresh_token,
+                    "grant_type": "refresh_token",
+                })
+                return data.get("access_token")
+        except Exception as e:
+            logger.error("Failed to get token from .env refresh_token: %s", e)
+
     creds = await _get_credentials(domain)
     if not creds:
         return None
@@ -195,9 +228,10 @@ def _summarize(rows: list[dict]) -> dict:
 
 
 async def fetch_gsc(domain: str, days: int = 28) -> dict | None:
-    creds = await _get_credentials(domain)
-    if not creds:
+    token = await _valid_access_token(domain)
+    if not token:
         return None
+        
     sites = await list_sites(domain)
     site = _match_property(sites, domain)
     if not site:
@@ -209,6 +243,7 @@ async def fetch_gsc(domain: str, days: int = 28) -> dict | None:
     p_rows = await _analytics_query(site, domain, ["page"], days)
     c_risks = await _cannibalization_query(site, domain, days)
     totals = _summarize(q_rows)
+    creds = await _get_credentials(domain) or {}
     await _save_credentials(domain, {**creds, "property": site})
     return {
         "property": site,
@@ -234,10 +269,13 @@ async def fetch_gsc(domain: str, days: int = 28) -> dict | None:
 
 
 async def gsc_status(domain: str) -> dict:
-    creds = await _get_credentials(domain)
-    cfg_ok = await configured()
-    if not creds:
+    creds = await _get_credentials(domain) or {}
+    env_configured = bool(settings.gsc_service_account_file or settings.gsc_refresh_token)
+    cfg_ok = await configured() or env_configured
+    
+    if not creds and not env_configured:
         return {"connected": False, "configured": cfg_ok, "domain": domain, "property": None}
+        
     return {
         "connected": True,
         "configured": cfg_ok,
@@ -254,9 +292,11 @@ async def disconnect(domain: str) -> None:
 
 
 async def inspect_url(domain: str, url: str) -> dict:
-    creds = await _get_credentials(domain)
-    if not creds:
+    token = await _valid_access_token(domain)
+    if not token:
         raise RuntimeError("GSC not connected for this domain")
+        
+    creds = await _get_credentials(domain) or {}
     site = creds.get("property")
     if not site:
         sites = await list_sites(domain)
@@ -264,10 +304,6 @@ async def inspect_url(domain: str, url: str) -> dict:
         if not site:
             raise RuntimeError(f"Domain {domain} is not a verified Search Console property.")
             
-    token = await _valid_access_token(domain)
-    if not token:
-         raise RuntimeError("GSC token invalid or expired")
-         
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
             URL_INSPECTION_URL,

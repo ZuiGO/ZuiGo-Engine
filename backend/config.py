@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     gsc_client_id: str = ""
     gsc_client_secret: str = ""
     gsc_redirect_uri: str = "http://localhost:8001/api/gsc/callback"
+    gsc_refresh_token: str = ""
+    gsc_service_account_file: str = ""
     pagespeed_api_key: str = ""
     slack_webhook_url: str = ""
     action_webhook_url: str = ""
@@ -30,12 +32,12 @@ class Settings(BaseSettings):
     staging_user: str = ""
     staging_password: str = ""
     crawl_max_pages: int = 2496
-    crawl_concurrency: int = 5
+    crawl_concurrency: int = 30
     crawl_timeout_seconds: int = 3600
-    crawl_politeness_delay: float = 0.5
+    crawl_politeness_delay: float = 0.05
     crawl_robots_delay_max: float = 5.0
     mobile_crawl_concurrency: int = 5
-    download_concurrency: int = 6
+    download_concurrency: int = 50
     psi_concurrency: int = 5
     extract_workers: int = 4
     competitor_crawl_max_pages: int = 2496

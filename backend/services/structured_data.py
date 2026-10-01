@@ -2,9 +2,8 @@
 Google deprecated FAQ rich results in May 2026)."""
 
 import json
+import re
 from datetime import datetime
-
-from bs4 import BeautifulSoup
 
 from backend.db.mongo import get_db
 
@@ -15,14 +14,14 @@ SUPPORTED_TYPES = {
     "BreadcrumbList": ["itemListElement"],
 }
 
+_RE_JSON_LD = re.compile(r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', re.IGNORECASE | re.DOTALL)
 
 def _json_ld_objects(html: str) -> list[dict]:
     if not html:
         return []
-    soup = BeautifulSoup(html, "lxml")
     out = []
-    for script in soup.find_all("script", type="application/ld+json"):
-        raw = script.string or script.get_text()
+    for match in _RE_JSON_LD.finditer(html):
+        raw = match.group(1).strip()
         if not raw:
             continue
         try:

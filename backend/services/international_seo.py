@@ -94,29 +94,38 @@ def _locale_of_path(path: str) -> str | None:
     return None
 
 
+_RE_ALT = re.compile(r'<link[^>]+rel=["\']alternate["\'][^>]*>', re.IGNORECASE)
+_RE_HREF = re.compile(r'href=["\']([^"\']+)["\']', re.IGNORECASE)
+_RE_HREFLANG = re.compile(r'hreflang=["\']([^"\']+)["\']', re.IGNORECASE)
+_RE_HTML_LANG = re.compile(r'<html[^>]+lang=["\']([^"\']+)["\']', re.IGNORECASE)
+_RE_CONTENT_LANG = re.compile(r'<meta[^>]+http-equiv=["\']content-language["\'][^>]+content=["\']([^"\']+)["\']', re.IGNORECASE)
+_RE_CANONICAL = re.compile(r'<link[^>]+rel=["\']canonical["\'][^>]+href=["\']([^"\']+)["\']', re.IGNORECASE)
+
 def _page_hreflang(html: str) -> tuple[dict[str, str], str | None, str | None, str | None]:
     """Return (alternates {code: href}, html_lang, content_lang, canonical)."""
     if not html:
         return {}, None, None, None
-    soup = BeautifulSoup(html, "lxml")
+    
     alternates: dict[str, str] = {}
-    for link in soup.find_all("link", rel="alternate"):
-        code = (link.get("hreflang") or "").strip().lower()
-        href = (link.get("href") or "").strip()
-        if code and href:
-            alternates[code] = href
+    for match in _RE_ALT.finditer(html):
+        tag = match.group(0)
+        href_m = _RE_HREF.search(tag)
+        code_m = _RE_HREFLANG.search(tag)
+        if href_m and code_m:
+            alternates[code_m.group(1).strip().lower()] = href_m.group(1).strip()
+            
     html_lang = None
-    if soup.html and soup.html.get("lang"):
-        html_lang = soup.html["lang"].strip().lower()
+    if m := _RE_HTML_LANG.search(html):
+        html_lang = m.group(1).strip().lower()
+        
     content_lang = None
-    meta = soup.find("meta", attrs={"http-equiv": "content-language"})
-    if meta and meta.get("content"):
-        content_lang = meta["content"].strip().lower()
+    if m := _RE_CONTENT_LANG.search(html):
+        content_lang = m.group(1).strip().lower()
+        
     canonical = None
-    for link in soup.find_all("link", rel="canonical"):
-        canonical = (link.get("href") or "").strip()
-        if canonical:
-            break
+    if m := _RE_CANONICAL.search(html):
+        canonical = m.group(1).strip()
+        
     return alternates, html_lang, content_lang, canonical
 
 

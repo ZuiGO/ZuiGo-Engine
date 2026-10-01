@@ -138,8 +138,9 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_s
             max_pages, 
             seed_sitemap=not is_single_page_comparison, 
             unlimited=not is_single_page_comparison,
-            http_username=http_username,
-            http_password=http_password
+            http_username=None,
+            http_password=None,
+            use_playwright=False
         )
         if not summary:
             raise Exception("Crawl returned no results")
@@ -227,19 +228,19 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_s
         async def _geo_readiness():
             if is_single_page_comparison: return {"status": "unknown", "score": None, "robots_txt_found": False}
             from backend.services.geo_readiness import check_geo_readiness
-            return await check_geo_readiness(url, http_username=http_username, http_password=http_password)
+            return await check_geo_readiness(url, http_username=None, http_password=None)
 
         async def _sitemap():
             if is_single_page_comparison: return {}
             await _progress("Auditing sitemap...")
             from backend.services.sitemap import audit_sitemap
-            return await audit_sitemap(job_id, url, http_username, http_password)
+            return await audit_sitemap(job_id, url, None, None)
 
         async def _ai_visibility():
             if is_single_page_comparison: return {}
             await _progress("Checking AI-search visibility...")
             from backend.services.ai_visibility import check_ai_visibility
-            return await check_ai_visibility(job_id, url, http_username, http_password)
+            return await check_ai_visibility(job_id, url, None, None)
 
         async def _local_seo():
             if is_single_page_comparison: return {}

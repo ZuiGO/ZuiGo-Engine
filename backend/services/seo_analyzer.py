@@ -10,6 +10,7 @@ indicates a real problem. Every action carries:
 """
 from datetime import datetime
 from urllib.parse import urlparse
+import asyncio
 
 from bson.objectid import ObjectId
 
@@ -606,10 +607,21 @@ async def analyze_pages(job_id: str) -> dict:
     extractable_map = {}
     try:
         from backend.services.content_signals import compute_page_signals
-        for p in pages:
-            signals = compute_page_signals(p.get("html") or "")
-            eaat_map[p.get("url", "")] = signals
-            extractable_map[p.get("url", "")] = signals.get("extractable_format", False)
+        
+        async def _compute_sigs(p):
+            html = p.get("html") or ""
+            url = p.get("url", "")
+            try:
+                sig = await asyncio.to_thread(compute_page_signals, html)
+                return url, sig
+            except Exception as e:
+                return url, None
+                
+        sig_results = await asyncio.gather(*(_compute_sigs(p) for p in pages))
+        for url, sig in sig_results:
+            if sig:
+                eaat_map[url] = sig
+                extractable_map[url] = sig.get("extractable_format", False)
     except Exception as sig_err:
         logger.warning("Page signals unavailable job=%s: %s", job_id, sig_err)
     ctx = {
@@ -630,6 +642,8 @@ async def analyze_pages(job_id: str) -> dict:
     created = 0
     skipped_learned = 0
     page_actions: dict[str, int] = {}
+    batch_inserts = []
+    
     for p in pages:
         for check in run_page_checks(p, ctx):
             issue_key = check["issue_key"]
@@ -647,9 +661,20 @@ async def analyze_pages(job_id: str) -> dict:
             )
             if page_action is None:
                 continue
-            await db.action_items.insert_one(page_action)
+            
+            # Limit page actions to cap
+            url_str = p.get("url", "")
+            if page_actions.get(url_str, 0) >= PAGE_ACTION_CAP:
+                continue
+            page_actions[url_str] = page_actions.get(url_str, 0) + 1
+            
             created += 1
-            page_actions[p.get("url", "")] = page_actions.get(p.get("url", ""), 0) + 1
+            batch_inserts.append(page_action)
+            
+    if batch_inserts:
+        # Insert in chunks of 500
+        for i in range(0, len(batch_inserts), 500):
+            await db.action_items.insert_many(batch_inserts[i:i+500])
 
     capped_pages = 0
     for url, count in page_actions.items():
