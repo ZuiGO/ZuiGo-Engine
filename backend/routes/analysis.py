@@ -216,6 +216,12 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_s
             from backend.services.performance_service import fetch_performance
             return await fetch_performance(job_id)
 
+        async def _redirect_map():
+            if is_single_page_comparison: return {}
+            await _progress("Mapping broken URLs to redirects...")
+            from backend.services.redirect_mapper import generate_redirect_map
+            return await generate_redirect_map(job_id)
+
         async def _duplicate():
             await _progress("Detecting duplicate content and validating structured data...")
             from backend.services.duplicate_content import detect_duplicate_content
@@ -281,6 +287,7 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_s
             _stage("insights", _insights, fallback=None),
             _stage("backlinks", _backlinks, fallback={"total": 0}),
             _stage("link_health", _link_health, fallback={}),
+            _stage("redirects", _redirect_map, fallback={"mappings": []}),
             _stage("performance", _performance, fallback={}),
             _stage("duplicate", _duplicate, fallback={}),
             _stage("structured", _structured, fallback={}),
@@ -336,12 +343,19 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_s
             kws = await get_smart_keywords(job_id, max_total=40, use_llm=True, rebuild=True)
             return {"count": len(kws)}
 
+        async def _catalogue():
+            if is_single_page_comparison: return {}
+            await _progress("Auditing e-commerce catalogue structures...")
+            from backend.services.catalogue_optimization import audit_catalogue
+            return await audit_catalogue(job_id)
+
         w2 = {}
         for coro in [
             _stage("action_analysis", _action_analysis, fallback=None),
             _stage("geo_alignment", _geo_alignment, fallback={}),
             _stage("programmatic_seo", _programmatic_seo, fallback={}),
             _stage("keywords", _smart_keywords, fallback={"count": 0}),
+            _stage("catalogue", _catalogue, fallback={}),
             _stage("vectors", _vectors, fallback=0),
         ]:
             k, v = await coro
@@ -350,6 +364,7 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_s
         keyword_count = w2["keywords"].get("count", 0)
         geo_off_topic = w2["geo_alignment"].get("off_topic_pages", 0)
         programmatic = w2["programmatic_seo"]
+        catalogue = w2["catalogue"]
 
         async def _health():
             await _progress("Computing site health...")
@@ -361,10 +376,38 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_s
             from backend.services.sitewide_factors import generate_sitewide_factors
             return await generate_sitewide_factors(job_id, url)
 
+        async def _content_freshness():
+            if is_single_page_comparison: return {}
+            await _progress("Auditing content freshness...")
+            from backend.services.content_freshness import audit_content_freshness
+            return await audit_content_freshness(job_id)
+
+        async def _content_growth():
+            if is_single_page_comparison: return {}
+            await _progress("Generating content growth opportunities...")
+            from backend.services.content_growth import generate_content_opportunities
+            return await generate_content_opportunities(job_id, domain)
+
+        async def _citation_audit():
+            if is_single_page_comparison: return {}
+            await _progress("Checking B2B citations and profiles...")
+            from backend.services.citation_audit import audit_citations
+            return await audit_citations(job_id, url)
+
+        async def _brand_monitor():
+            if is_single_page_comparison: return {}
+            await _progress("Monitoring brand reputation...")
+            from backend.services.brand_monitor import monitor_brand_reputation
+            return await monitor_brand_reputation(job_id, url)
+
         w3 = {}
         for coro in [
             _stage("site_health", _health, fallback={}),
-            _stage("sitewide_factors", _sitewide_factors, fallback={})
+            _stage("sitewide_factors", _sitewide_factors, fallback={}),
+            _stage("freshness", _content_freshness, fallback={}),
+            _stage("growth", _content_growth, fallback={}),
+            _stage("citations", _citation_audit, fallback={}),
+            _stage("brand", _brand_monitor, fallback={}),
         ]:
             k, v = await coro
             w3[k] = v
@@ -419,6 +462,7 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_s
                     "links_checked": link_health.get("checked", 0),
                     "broken_links": link_health.get("broken_link_count", link_health.get("broken", 0)),
                     "broken_link_count": link_health.get("broken_link_count", link_health.get("broken", 0)),
+                    "redirect_mappings": len(w1.get("redirects", {}).get("mappings", [])),
                     "total_links_scanned": link_health.get("total_links_scanned", link_health.get("checked", 0)),
                     "health_grade": health_grade,
                     "cwv_pages": cwv_pages,
@@ -444,6 +488,27 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_s
                         "template_pages": programmatic.get("template_pages", 0),
                         "clusters": programmatic.get("clusters_count", 0),
                         "thin_template_pages": programmatic.get("thin_template_pages", 0),
+                    },
+                    "catalogue": {
+                        "total_plps": catalogue.get("total_plps", 0),
+                        "total_pdps": catalogue.get("total_pdps", 0),
+                        "faceted_urls_crawled": catalogue.get("faceted_urls_crawled", 0),
+                        "potential_crawl_trap": catalogue.get("potential_crawl_trap", False)
+                    },
+                    "freshness": {
+                        "decayed_pages_count": w3.get("freshness", {}).get("decayed_pages_count", 0),
+                        "score": w3.get("freshness", {}).get("score", 100)
+                    },
+                    "content_growth": {
+                        "opportunities": len(w3.get("growth", {}).get("opportunities", []))
+                    },
+                    "citations": {
+                        "profiles_found": w3.get("citations", {}).get("profiles_found", 0),
+                        "score": w3.get("citations", {}).get("score", 0)
+                    },
+                    "brand_reputation": {
+                        "sentiment": w3.get("brand", {}).get("sentiment", "unknown"),
+                        "risk_score": w3.get("brand", {}).get("risk_score", 0)
                     },
                     "sitewide_factors": w3.get("sitewide_factors", {}),
                     "sitemap": {

@@ -617,7 +617,13 @@ async def analyze_pages(job_id: str) -> dict:
             except Exception as e:
                 return url, None
                 
-        sig_results = await asyncio.gather(*(_compute_sigs(p) for p in pages))
+        sig_results = []
+        # Process in batches of 10 to prevent thread pool exhaustion and OOM
+        for i in range(0, len(pages), 10):
+            batch = pages[i:i+10]
+            batch_results = await asyncio.gather(*(_compute_sigs(p) for p in batch))
+            sig_results.extend(batch_results)
+            
         for url, sig in sig_results:
             if sig:
                 eaat_map[url] = sig

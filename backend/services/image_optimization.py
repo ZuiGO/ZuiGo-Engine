@@ -29,9 +29,54 @@ def _resolve(page_url: str, src: str) -> str:
     return full
 
 
+import asyncio
+
+def _parse_page(html: str, url: str):
+    soup = BeautifulSoup(html, "lxml")
+    imgs = soup.find_all("img")
+    if not imgs:
+        return 0, 0, []
+    
+    extracted = []
+    for img in imgs:
+        src = (img.get("src") or "").strip()
+        key = _resolve(url, src)
+        if not key:
+            continue
+            
+        alt_missing = not img.has_attr("alt")
+        lazy = (img.get("loading") or "").strip().lower() == "lazy"
+        
+        modern = False
+        srcset = (img.get("srcset") or "").strip().lower()
+        if any(key.lower().endswith(ext) or ext in srcset for ext in MODERN_EXT):
+            modern = True
+        else:
+            picture = next(
+                (a for a in (img.parents if img.parent is not None else iter(()))
+                 if getattr(a, "name", "") == "picture"),
+                None,
+            )
+            if picture is not None:
+                sources = picture.find_all("source")
+                if any((s.get("type") or "").lower() in ("image/webp", "image/avif") for s in sources):
+                    modern = True
+                    
+        dims_missing = not (img.get("width") and img.get("height"))
+        
+        extracted.append({
+            "key": key,
+            "alt_missing": alt_missing,
+            "lazy": lazy,
+            "modern": modern,
+            "dims_missing": dims_missing
+        })
+        
+    return 1, len(imgs), extracted
+
 async def audit_image_optimization(job_id: str) -> dict:
     db = get_db()
-    pages = await db.pages.find({"job_id": job_id}, {"html": 1, "url": 1}).to_list(length=None)
+    cursor = db.pages.find({"job_id": job_id}, {"html": 1, "url": 1})
 
     total_imgs = 0
     modern_imgs = 0
@@ -40,7 +85,6 @@ async def audit_image_optimization(job_id: str) -> dict:
     alt_missing = 0
     pages_with_imgs = 0
     occurrences = 0
-    seen: set[str] = set()
 
     alt_missing_urls = []
     dims_missing_urls = []
@@ -48,56 +92,43 @@ async def audit_image_optimization(job_id: str) -> dict:
     non_lazy_urls = []
 
     images = {}
+    
+    pages_batch = []
+    
+    async def process_batch(batch):
+        nonlocal pages_with_imgs, occurrences
+        if not batch: return
+        res = await asyncio.gather(*(asyncio.to_thread(_parse_page, p["html"], p["url"]) for p in batch))
+        for (p_with, occ, extracted) in res:
+            pages_with_imgs += p_with
+            occurrences += occ
+            for img_data in extracted:
+                key = img_data["key"]
+                if key not in images:
+                    images[key] = {
+                        "alt_missing": False,
+                        "lazy": False,
+                        "modern": False,
+                        "dims_missing": False,
+                    }
+                state = images[key]
+                if img_data["alt_missing"]: state["alt_missing"] = True
+                if img_data["lazy"]: state["lazy"] = True
+                if img_data["modern"]: state["modern"] = True
+                if img_data["dims_missing"]: state["dims_missing"] = True
 
-    for p in pages:
+    async for p in cursor:
         html = p.get("html") or ""
+        url = p.get("url", "")
         if not html:
             continue
-        soup = BeautifulSoup(html, "lxml")
-        imgs = soup.find_all("img")
-        if not imgs:
-            continue
-        pages_with_imgs += 1
-        occurrences += len(imgs)
-        for img in imgs:
-            src = (img.get("src") or "").strip()
-            key = _resolve(p.get("url", ""), src)
-            if not key:
-                continue
+        pages_batch.append({"html": html, "url": url})
+        if len(pages_batch) >= 50:
+            await process_batch(pages_batch)
+            pages_batch = []
             
-            if key not in images:
-                images[key] = {
-                    "alt_missing": False,
-                    "lazy": False,
-                    "modern": False,
-                    "dims_missing": False,
-                }
-                
-            state = images[key]
-            
-            if not img.has_attr("alt"):
-                state["alt_missing"] = True
-                
-            loading = (img.get("loading") or "").strip().lower()
-            if loading == "lazy":
-                state["lazy"] = True
-                
-            srcset = (img.get("srcset") or "").strip().lower()
-            if any(key.lower().endswith(ext) or ext in srcset for ext in MODERN_EXT):
-                state["modern"] = True
-            else:
-                picture = next(
-                    (a for a in (img.parents if img.parent is not None else iter(()))
-                     if getattr(a, "name", "") == "picture"),
-                    None,
-                )
-                if picture is not None:
-                    sources = picture.find_all("source")
-                    if any((s.get("type") or "").lower() in ("image/webp", "image/avif") for s in sources):
-                        state["modern"] = True
-                        
-            if not (img.get("width") and img.get("height")):
-                state["dims_missing"] = True
+    if pages_batch:
+        await process_batch(pages_batch)
 
     total_imgs = len(images)
     for key, state in images.items():

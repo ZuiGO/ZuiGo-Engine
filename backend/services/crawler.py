@@ -63,8 +63,10 @@ async def _goto_polite(page, url: str, gate: asyncio.Lock, delay: float, timeout
     return resp
 
 
-async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None, concurrency: int = 5, seed_sitemap: bool = False, unlimited: bool = False, mobile: bool = True, use_playwright: bool = True, http_username: str | None = None, http_password: str | None = None):
+async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None, concurrency: int | None = None, seed_sitemap: bool = False, unlimited: bool = False, mobile: bool = True, use_playwright: bool = True, http_username: str | None = None, http_password: str | None = None):
     db = get_db()
+    if concurrency is None:
+        concurrency = settings.crawl_concurrency
     target_url = normalize_url(target_url) or target_url
     parsed = urlparse(target_url)
     base_domain = parsed.netloc.lower()
@@ -208,50 +210,83 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
                     failed_urls.add(url)
                     return None
 
-                soup = BeautifulSoup(html, "lxml")
-
-                title_tag = soup.find("title")
-                title = title_tag.get_text(strip=True) if title_tag else ""
-                meta_desc = soup.find("meta", attrs={"name": "description"})
-                meta_description = meta_desc.get("content", "") if meta_desc else ""
-                body_text = soup.get_text(separator=" ", strip=True)
-                word_count = len(body_text.split())
-                h1_count = len(soup.find_all("h1"))
-
-                images = soup.find_all("img")
-                image_count = len(images)
-                images_missing_alt = sum(1 for img in images if not img.has_attr("alt"))
-
-                internal_urls = []
-                external_urls = []
-                for a_tag in soup.find_all("a", href=True):
-                    href = a_tag["href"].strip()
-                    full_url = urljoin(url, href)
-                    norm = normalize_url(full_url)
-                    if not norm:
-                        continue
-                    full_parsed = urlparse(norm)
+                def _parse_html(html_text: str, current_url: str):
+                    soup = BeautifulSoup(html_text, "lxml")
                     
-                    parsed_netloc = full_parsed.netloc.lower()
-                    if parsed_netloc.startswith("www."):
-                        parsed_netloc = parsed_netloc[4:]
-                    
-                    base_netloc = base_domain
-                    if base_netloc.startswith("www."):
-                        base_netloc = base_netloc[4:]
+                    html_tag = soup.find("html")
+                    if html_tag and html_tag.has_attr("lang"):
+                        lang = html_tag["lang"].lower()
+                        # Strict rule: only allow English locales (en, en-US, en-GB, etc.)
+                        if not lang.startswith("en"):
+                            return {"is_non_english": True}
 
-                    if parsed_netloc == base_netloc or not full_parsed.netloc:
-                        internal_urls.append(norm)
-                    elif full_parsed.netloc and parsed_netloc != base_netloc:
-                        external_urls.append(norm)
+                    title_tag = soup.find("title")
+                    title = title_tag.get_text(strip=True) if title_tag else ""
+                    meta_desc = soup.find("meta", attrs={"name": "description"})
+                    meta_description = meta_desc.get("content", "") if meta_desc else ""
+                    body_text = soup.get_text(separator=" ", strip=True)
+                    word_count = len(body_text.split())
+                    h1_count = len(soup.find_all("h1"))
 
-                has_structured_data = bool(soup.find("script", type="application/ld+json"))
-                noindex = False
-                robots_meta = soup.find("meta", attrs={"name": "robots"})
-                if robots_meta:
-                    noindex = "noindex" in robots_meta.get("content", "").lower()
+                    images = soup.find_all("img")
+                    image_count = len(images)
+                    images_missing_alt = sum(1 for img in images if not img.has_attr("alt"))
 
-                page_type = classify_page_type(url, soup, title, meta_description)
+                    internal_urls = []
+                    external_urls = []
+                    for a_tag in soup.find_all("a", href=True):
+                        href = a_tag["href"].strip()
+                        full_url = urljoin(current_url, href)
+                        norm = normalize_url(full_url)
+                        if not norm:
+                            continue
+                        full_parsed = urlparse(norm)
+                        
+                        parsed_netloc = full_parsed.netloc.lower()
+                        if parsed_netloc.startswith("www."):
+                            parsed_netloc = parsed_netloc[4:]
+                        
+                        base_netloc = base_domain
+                        if base_netloc.startswith("www."):
+                            base_netloc = base_netloc[4:]
+
+                        if parsed_netloc == base_netloc or not full_parsed.netloc:
+                            internal_urls.append(norm)
+                        elif full_parsed.netloc and parsed_netloc != base_netloc:
+                            external_urls.append(norm)
+
+                    has_structured_data = bool(soup.find("script", type="application/ld+json"))
+                    noindex = False
+                    robots_meta = soup.find("meta", attrs={"name": "robots"})
+                    if robots_meta:
+                        noindex = "noindex" in robots_meta.get("content", "").lower()
+
+                    page_type = classify_page_type(current_url, soup, title, meta_description)
+                    items = detect_content_types(current_url, html_text)
+                    return {
+                        "title": title, "meta_description": meta_description, "word_count": word_count,
+                        "h1_count": h1_count, "image_count": image_count, "images_missing_alt": images_missing_alt,
+                        "internal_urls": internal_urls, "external_urls": external_urls, "has_structured_data": has_structured_data,
+                        "noindex": noindex, "page_type": page_type, "items": items
+                    }
+
+                parsed_data = await asyncio.to_thread(_parse_html, html, url)
+                if parsed_data.get("is_non_english"):
+                    logger.info("Skipped non-English page: %s", url)
+                    return None
+
+                title = parsed_data["title"]
+                meta_description = parsed_data["meta_description"]
+                word_count = parsed_data["word_count"]
+                h1_count = parsed_data["h1_count"]
+                image_count = parsed_data["image_count"]
+                images_missing_alt = parsed_data["images_missing_alt"]
+                internal_urls = parsed_data["internal_urls"]
+                external_urls = parsed_data["external_urls"]
+                has_structured_data = parsed_data["has_structured_data"]
+                noindex = parsed_data["noindex"]
+                page_type = parsed_data["page_type"]
+                items = parsed_data["items"]
 
                 last_modified = None
                 try:
@@ -260,8 +295,6 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
                         last_modified = datetime.fromtimestamp(email.utils.parsedate_to_datetime(lm).timestamp())
                 except Exception:
                     last_modified = None
-
-                items = detect_content_types(url, html)
 
                 downloaded_types = set()
                 download_sem = asyncio.Semaphore(settings.download_concurrency)
@@ -361,7 +394,13 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
             context = await browser.new_context(**ctx_opts)
 
         crawled = 0
+        pages_since_context_reset = 0
         while queue and crawled < ceiling:
+            if use_playwright and context and pages_since_context_reset >= 100:
+                await context.close()
+                context = await browser.new_context(**ctx_opts)
+                pages_since_context_reset = 0
+
             await check_cancelled(job_id)
             batch_size = min(concurrency, ceiling - crawled)
             batch = queue[:batch_size]
@@ -382,7 +421,13 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
             for result in results:
                 if result:
                     crawled += 1
-                    crawled_pages.append(result)
+                    pages_since_context_reset += 1
+                    crawled_pages.append({
+                        "url": result["url"],
+                        "click_depth": result.get("click_depth", 0),
+                        "redirect_count": result.get("redirect_count", 0),
+                        "https_entry": result.get("https_entry", False)
+                    })
 
                     new_urls = []
                     parent_depth = depth_map.get(result["url"], 0)

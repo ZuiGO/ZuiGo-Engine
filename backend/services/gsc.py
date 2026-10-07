@@ -24,6 +24,7 @@ TOKEN_URL = "https://oauth2.googleapis.com/token"
 SITES_URL = "https://www.googleapis.com/webmasters/v3/sites"
 SEARCH_ANALYTICS_URL = "https://www.googleapis.com/webmasters/v3/sites/{site}/searchAnalytics/query"
 URL_INSPECTION_URL = "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect"
+SITEMAPS_URL = "https://www.googleapis.com/webmasters/v3/sites/{site}/sitemaps"
 
 
 async def get_gsc_config() -> dict:
@@ -198,20 +199,26 @@ async def list_sites(domain: str) -> list[str]:
     return [s.get("siteUrl") for s in resp.json().get("siteEntry", [])]
 
 
-async def _analytics_query(site: str, domain: str, dimensions: list[str], days: int = 28) -> list[dict]:
+async def _analytics_query(site: str, domain: str, dimensions: list[str], days: int = 28, search_type: str = "web", row_limit: int = 25) -> list[dict]:
     token = await _valid_access_token(domain)
     if not token:
         raise RuntimeError("GSC not connected for this domain")
     start = (datetime.utcnow() - timedelta(days=days - 1)).strftime("%Y-%m-%d")
     end = datetime.utcnow().strftime("%Y-%m-%d")
+    
+    payload = {"startDate": start, "endDate": end, "dimensions": dimensions, "rowLimit": row_limit}
+    if search_type != "web":
+        payload["type"] = search_type
+
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
             SEARCH_ANALYTICS_URL.format(site=quote(site, safe="")),
             headers={"Authorization": f"Bearer {token}"},
-            json={"startDate": start, "endDate": end, "dimensions": dimensions, "rowLimit": 25},
+            json=payload,
         )
     if resp.status_code >= 400:
-        raise RuntimeError(f"GSC search analytics failed (HTTP {resp.status_code}): {resp.text[:200]}")
+        logger.warning(f"GSC search analytics failed (HTTP {resp.status_code}): {resp.text[:200]}")
+        return []
     return resp.json().get("rows") or []
 
 
@@ -227,6 +234,30 @@ def _summarize(rows: list[dict]) -> dict:
     }
 
 
+async def list_sitemaps(domain: str) -> list[dict]:
+    token = await _valid_access_token(domain)
+    if not token:
+        raise RuntimeError("GSC not connected for this domain")
+    
+    creds = await _get_credentials(domain) or {}
+    site = creds.get("property")
+    if not site:
+        sites = await list_sites(domain)
+        site = _match_property(sites, domain)
+        if not site:
+            return []
+            
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.get(
+            SITEMAPS_URL.format(site=quote(site, safe="")),
+            headers={"Authorization": f"Bearer {token}"}
+        )
+    if resp.status_code >= 400:
+        logger.warning(f"GSC sitemaps list failed (HTTP {resp.status_code}): {resp.text[:200]}")
+        return []
+    return resp.json().get("sitemap", [])
+
+
 async def fetch_gsc(domain: str, days: int = 28) -> dict | None:
     token = await _valid_access_token(domain)
     if not token:
@@ -239,31 +270,47 @@ async def fetch_gsc(domain: str, days: int = 28) -> dict | None:
             f"Domain {domain} is not a verified Search Console property. "
             "Verify it in Search Console first (found: " + (", ".join(sites[:5]) or "none") + ")."
         )
-    q_rows = await _analytics_query(site, domain, ["query"], days)
-    p_rows = await _analytics_query(site, domain, ["page"], days)
+    q_rows = await _analytics_query(site, domain, ["query"], days, row_limit=100)
+    p_rows = await _analytics_query(site, domain, ["page"], days, row_limit=100)
     c_risks = await _cannibalization_query(site, domain, days)
+    
+    # Granular dimensions
+    device_rows = await _analytics_query(site, domain, ["device"], days, row_limit=10)
+    country_rows = await _analytics_query(site, domain, ["country"], days, row_limit=20)
+    appearance_rows = await _analytics_query(site, domain, ["searchAppearance"], days, row_limit=20)
+    
+    # Other search types
+    discover_rows = await _analytics_query(site, domain, ["page"], days, search_type="discover", row_limit=25)
+    news_rows = await _analytics_query(site, domain, ["page"], days, search_type="googleNews", row_limit=25)
+    
+    sitemaps = await list_sitemaps(domain)
+    
     totals = _summarize(q_rows)
     creds = await _get_credentials(domain) or {}
     await _save_credentials(domain, {**creds, "property": site})
+    
+    def _format_rows(rows, key_name):
+        return [
+            {key_name: r["keys"][0], "clicks": r.get("clicks", 0),
+             "impressions": r.get("impressions", 0),
+             "ctr": round(r.get("clicks", 0) / r.get("impressions", 1), 4) if r.get("impressions") else 0,
+             "position": r.get("position")}
+            for r in rows if r.get("keys")
+        ]
+
     return {
         "property": site,
         "days": days,
         "fetched_at": datetime.utcnow(),
         **totals,
-        "queries": [
-            {"query": r["keys"][0], "clicks": r.get("clicks", 0),
-             "impressions": r.get("impressions", 0),
-             "ctr": round(r.get("clicks", 0) / r.get("impressions", 1), 4) if r.get("impressions") else 0,
-             "position": r.get("position")}
-            for r in q_rows
-        ],
-        "pages": [
-            {"page": r["keys"][0], "clicks": r.get("clicks", 0),
-             "impressions": r.get("impressions", 0),
-             "ctr": round(r.get("clicks", 0) / r.get("impressions", 1), 4) if r.get("impressions") else 0,
-             "position": r.get("position")}
-            for r in p_rows
-        ],
+        "queries": _format_rows(q_rows, "query"),
+        "pages": _format_rows(p_rows, "page"),
+        "devices": _format_rows(device_rows, "device"),
+        "countries": _format_rows(country_rows, "country"),
+        "search_appearance": _format_rows(appearance_rows, "appearance"),
+        "discover_pages": _format_rows(discover_rows, "page"),
+        "news_pages": _format_rows(news_rows, "page"),
+        "sitemaps": sitemaps,
         "cannibalization_risks": c_risks,
     }
 

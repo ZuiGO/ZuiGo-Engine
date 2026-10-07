@@ -1,0 +1,44 @@
+16:20:14: Starting worker for 5 functions: analyze_job, approve_all_batch, keyword_check, competitor_audit, agent_run
+16:20:14: redis_version=8.8.0 mem_usage=1.06M clients_connected=1 db_keys=27
+2026-09-29 16:20:14 | INFO     | __main__ | Logging initialized: level=INFO dir=logs
+2026-09-29 16:20:14 | INFO     | worker | Worker connected to MongoDB
+16:23:03: shutdown on SIGTERM ◆ 0 jobs complete ◆ 0 failed ◆ 0 retries ◆ 0 ongoing to cancel
+2026-09-29 16:23:03 | INFO     | arq.worker | shutdown on SIGTERM ◆ 0 jobs complete ◆ 0 failed ◆ 0 retries ◆ 0 ongoing to cancel
+16:23:04: Starting worker for 5 functions: analyze_job, approve_all_batch, keyword_check, competitor_audit, agent_run
+16:23:04: redis_version=8.8.0 mem_usage=1.06M clients_connected=1 db_keys=27
+2026-09-29 16:23:04 | INFO     | __main__ | Logging initialized: level=INFO dir=logs
+2026-09-29 16:23:04 | INFO     | worker | Worker connected to MongoDB
+16:37:00: Starting worker for 5 functions: analyze_job, approve_all_batch, keyword_check, competitor_audit, agent_run
+16:37:00: redis_version=8.8.0 mem_usage=1.06M clients_connected=1 db_keys=28
+2026-09-29 16:37:00 | INFO     | __main__ | Logging initialized: level=INFO dir=logs
+2026-09-29 16:37:00 | INFO     | worker | Worker connected to MongoDB
+16:40:47: shutdown on SIGTERM ◆ 0 jobs complete ◆ 0 failed ◆ 0 retries ◆ 0 ongoing to cancel
+2026-09-29 16:40:47 | INFO     | arq.worker | shutdown on SIGTERM ◆ 0 jobs complete ◆ 0 failed ◆ 0 retries ◆ 0 ongoing to cancel
+16:40:48: Starting worker for 5 functions: analyze_job, approve_all_batch, keyword_check, competitor_audit, agent_run
+16:40:48: redis_version=8.8.0 mem_usage=1.06M clients_connected=1 db_keys=27
+2026-09-29 16:40:48 | INFO     | __main__ | Logging initialized: level=INFO dir=logs
+2026-09-29 16:40:48 | INFO     | worker | Worker connected to MongoDB
+22:31:14: shutdown on SIGTERM ◆ 0 jobs complete ◆ 0 failed ◆ 0 retries ◆ 0 ongoing to cancel
+2026-09-30 22:31:14 | INFO     | arq.worker | shutdown on SIGTERM ◆ 0 jobs complete ◆ 0 failed ◆ 0 retries ◆ 0 ongoing to cancel
+22:31:15: Starting worker for 5 functions: analyze_job, approve_all_batch, keyword_check, competitor_audit, agent_run
+22:31:15: redis_version=8.8.0 mem_usage=1.11M clients_connected=1 db_keys=27
+2026-09-30 22:31:15 | INFO     | __main__ | Logging initialized: level=INFO dir=logs
+2026-09-30 22:31:16 | INFO     | worker | Worker connected to MongoDB
+22:53:16: shutdown on SIGTERM ◆ 0 jobs complete ◆ 0 failed ◆ 0 retries ◆ 0 ongoing to cancel
+2026-09-30 22:53:16 | INFO     | arq.worker | shutdown on SIGTERM ◆ 0 jobs complete ◆ 0 failed ◆ 0 retries ◆ 0 ongoing to cancel
+22:53:17: Starting worker for 5 functions: analyze_job, approve_all_batch, keyword_check, competitor_audit, agent_run
+22:53:17: redis_version=8.8.0 mem_usage=1.11M clients_connected=1 db_keys=27
+2026-09-30 22:53:17 | INFO     | __main__ | Logging initialized: level=INFO dir=logs
+2026-09-30 22:53:17 | INFO     | worker | Worker connected to MongoDB
+22:55:22: shutdown on SIGTERM ◆ 0 jobs complete ◆ 0 failed ◆ 0 retries ◆ 0 ongoing to cancel
+2026-09-30 22:55:22 | INFO     | arq.worker | shutdown on SIGTERM ◆ 0 jobs complete ◆ 0 failed ◆ 0 retries ◆ 0 ongoing to cancel
+22:55:23: Starting worker for 5 functions: analyze_job, approve_all_batch, keyword_check, competitor_audit, agent_run
+22:55:23: redis_version=8.8.0 mem_usage=1.11M clients_connected=1 db_keys=27
+2026-09-30 22:55:23 | INFO     | __main__ | Logging initialized: level=INFO dir=logs
+2026-09-30 22:55:23 | INFO     | worker | Worker connected to MongoDB
+10:59:49: shutdown on SIGTERM ◆ 0 jobs complete ◆ 0 failed ◆ 0 retries ◆ 0 ongoing to cancel
+2026-10-01 10:59:49 | INFO     | arq.worker | shutdown on SIGTERM ◆ 0 jobs complete ◆ 0 failed ◆ 0 retries ◆ 0 ongoing to cancel
+10:59:50: Starting worker for 5 functions: analyze_job, approve_all_batch, keyword_check, competitor_audit, agent_run
+10:59:50: redis_version=8.8.0 mem_usage=1.11M clients_connected=1 db_keys=27
+2026-10-01 10:59:50 | INFO     | __main__ | Logging initialized: level=INFO dir=logs
+2026-10-01 10:59:50 | INFO     | worker | Worker connected to MongoDB
