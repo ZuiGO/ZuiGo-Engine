@@ -274,7 +274,8 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_s
             from backend.services.image_optimization import audit_image_optimization
             return await audit_image_optimization(job_id)
 
-        w1 = dict(await asyncio.gather(*[
+        w1 = {}
+        for coro in [
             _stage("user_flows", _user_flows, fallback=0),
             _stage("extraction", _extraction, fallback={}),
             _stage("insights", _insights, fallback=None),
@@ -292,7 +293,9 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_s
             _stage("url_hygiene", _url_hygiene, fallback={}),
             _stage("indexation", _indexation, fallback={}),
             _stage("image_opt", _image_opt, fallback={}),
-        ]))
+        ]:
+            k, v = await coro
+            w1[k] = v
 
         flow_count = w1["user_flows"]
         extraction_summary = w1["extraction"]
@@ -333,13 +336,16 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_s
             kws = await get_smart_keywords(job_id, max_total=40, use_llm=True, rebuild=True)
             return {"count": len(kws)}
 
-        w2 = dict(await asyncio.gather(*[
+        w2 = {}
+        for coro in [
             _stage("action_analysis", _action_analysis, fallback=None),
             _stage("geo_alignment", _geo_alignment, fallback={}),
             _stage("programmatic_seo", _programmatic_seo, fallback={}),
             _stage("keywords", _smart_keywords, fallback={"count": 0}),
             _stage("vectors", _vectors, fallback=0),
-        ]))
+        ]:
+            k, v = await coro
+            w2[k] = v
         vector_count = w2["vectors"]
         keyword_count = w2["keywords"].get("count", 0)
         geo_off_topic = w2["geo_alignment"].get("off_topic_pages", 0)
@@ -355,10 +361,13 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_s
             from backend.services.sitewide_factors import generate_sitewide_factors
             return await generate_sitewide_factors(job_id, url)
 
-        w3 = dict(await asyncio.gather(*[
+        w3 = {}
+        for coro in [
             _stage("site_health", _health, fallback={}),
             _stage("sitewide_factors", _sitewide_factors, fallback={})
-        ]))
+        ]:
+            k, v = await coro
+            w3[k] = v
 
         health = w3["site_health"]
         health_grade = health.get("grade")

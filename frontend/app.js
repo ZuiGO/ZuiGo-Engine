@@ -2949,7 +2949,6 @@ async function loadSeoInsights(jobId) {
 
 async function loadGsc(jobId) {
   const badge = document.getElementById("gsc-status-badge");
-  const connectEl = document.getElementById("gsc-connect");
   const dataEl = document.getElementById("gsc-data");
   try {
     const resp = await fetch(`${API_BASE}/gsc/status/${jobId}`);
@@ -2957,31 +2956,12 @@ async function loadGsc(jobId) {
     if (badge) {
       badge.innerHTML = status && status.connected
         ? `<span class="count-label" style="color:#16a34a">Connected${status.property ? " · " + escapeHtml(status.property) : ""}</span>`
-        : "";
+        : `<span class="count-label" style="color:#ef4444">Not Connected</span>`;
     }
     const refreshBtn = document.getElementById("gsc-refresh-btn");
-    const disconnectBtn = document.getElementById("gsc-disconnect-btn");
     if (refreshBtn) refreshBtn.classList.toggle("hidden", !(status && status.connected));
-    if (disconnectBtn) disconnectBtn.classList.toggle("hidden", !(status && status.connected));
-    if (connectEl) {
-      if (status && status.connected) {
-        connectEl.innerHTML = "";
-      } else if (status && status.configured === false) {
-        connectEl.innerHTML = `<div class="service-error">
-          <div class="service-error-title">Google Search Console not configured</div>
-          <div class="service-error-msg">Add GSC_CLIENT_ID and GSC_CLIENT_SECRET (Google Cloud OAuth client with the Search Console API enabled) to .env and restart the server, then Connect.</div>
-        </div>`;
-      } else {
-        connectEl.innerHTML = `<p class="section-desc" style="margin-bottom:8px">Connect Google Search Console to pull real organic clicks, impressions and top queries for this domain (the domain must be a verified Search Console property).</p>
-          <button id="gsc-connect-btn" class="btn-secondary">Connect GSC</button>`;
-      }
-    }
-    if (window.location.hash.includes("gsc=connected")) {
-      showToast("Google Search Console connected");
-      history.replaceState(null, "", location.pathname + location.search + "#job/" + jobId + "/seo-insights");
-    }
   } catch (err) {
-    if (connectEl) connectEl.innerHTML = `<p class="section-desc">Error checking GSC status: ${escapeHtml(err.message)}</p>`;
+    if (badge) badge.innerHTML = `<span class="count-label" style="color:#ef4444">Error</span>`;
   }
   if (!dataEl || dataEl.textContent.trim() === "") {
     renderGscData(null, null);
@@ -3058,20 +3038,7 @@ function renderGscData(gsc, error) {
   el.innerHTML = html;
 }
 
-document.getElementById("gsc-connect")?.addEventListener("click", async (e) => {
-  if (e.target.id !== "gsc-connect-btn") return;
-  try {
-    const resp = await fetch(`${API_BASE}/gsc/auth/${currentJobId}`);
-    const data = await resp.json();
-    if (data.auth_url) {
-      window.location.href = data.auth_url;
-    } else {
-      showToast("GSC not configured: " + (data.hint || "missing OAuth client"));
-    }
-  } catch (err) {
-    showToast("GSC connect failed: " + err.message);
-  }
-});
+
 
 document.getElementById("gsc-refresh-btn")?.addEventListener("click", async () => {
   const el = document.getElementById("gsc-data");
@@ -3091,22 +3058,6 @@ document.getElementById("gsc-refresh-btn")?.addEventListener("click", async () =
   }
 });
 
-document.getElementById("gsc-disconnect-btn")?.addEventListener("click", async () => {
-  try {
-    const resp = await fetch(`${API_BASE}/gsc/${currentJobId}`, { method: "DELETE" });
-    if (!resp.ok) {
-      const data = await resp.json().catch(() => ({}));
-      showToast("GSC disconnect failed: " + (data.detail || resp.status));
-      return;
-    }
-    renderGscData(null, null);
-    loadGsc(currentJobId);
-    loadSeoInsights(currentJobId);
-    showToast("Google Search Console disconnected");
-  } catch (err) {
-    showToast("GSC disconnect failed: " + err.message);
-  }
-});
 
 async function loadBacklinkSources(jobId) {
   const el = document.getElementById("backlink-sources-list");

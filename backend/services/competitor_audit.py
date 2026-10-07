@@ -77,7 +77,6 @@ async def _crawl_competitor(comp_job: str, url: str) -> dict:
     from backend.services.crawler import crawl_site
     return await crawl_site(
         comp_job, url,
-        max_pages=settings.competitor_crawl_max_pages,
         concurrency=settings.crawl_concurrency,
         seed_sitemap=True,
         unlimited=True,

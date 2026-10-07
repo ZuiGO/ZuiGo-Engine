@@ -741,7 +741,6 @@
               <button id="gsc-disconnect-btn" class="btn-secondary hidden" style="font-size:12px;padding:4px 10px" onclick="event.stopPropagation()">Disconnect</button>
             </h3>
           </summary>
-          <div id="gsc-connect" class="insights-card"></div>
           <div id="gsc-data" class="insights-card" style="margin-top:10px"></div>
         </details>
         <details class="insights-section" open id="insights-onpage">
@@ -827,31 +826,7 @@
       </div>
 
       <div class="tab-content hidden" id="tab-settings">
-        <div class="logs-section">
-          <h3>Google Search Console</h3>
-          <p class="section-desc">Set up Google OAuth credentials so any user can connect their own Search Console property. Create a Google Cloud OAuth client (Web application), enable the Search Console API, and add your callback redirect URI to its authorized redirects. These credentials are stored in the app database — end users never see them.</p>
-          <div class="insights-card" style="max-width:640px">
-            <div style="display:grid;gap:12px;grid-template-columns:1fr">
-              <label style="font-size:13px;color:var(--text-secondary);display:flex;flex-direction:column;gap:4px">
-                Client ID
-                <input type="text" id="gsc-client-id" class="settings-input" placeholder="1234-xxxx.apps.googleusercontent.com" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text)">
-              </label>
-              <label style="font-size:13px;color:var(--text-secondary);display:flex;flex-direction:column;gap:4px">
-                Client Secret
-                <input type="password" id="gsc-client-secret" class="settings-input" placeholder="GOCSPX-..." style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text)">
-              </label>
-              <label style="font-size:13px;color:var(--text-secondary);display:flex;flex-direction:column;gap:4px">
-                Redirect URI <span id="gsc-redirect-current" style="font-size:12px;opacity:.8"></span>
-                <input type="text" id="gsc-redirect-uri" class="settings-input" placeholder="https://your-host/api/gsc/callback" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text)">
-              </label>
-            </div>
-            <div style="margin-top:14px;display:flex;align-items:center;gap:12px">
-              <button id="gsc-settings-save" class="btn-primary">Save GSC Settings</button>
-              <span id="gsc-settings-status" class="count-label"></span>
-            </div>
-            <div id="gsc-settings-hint" class="service-error" style="margin-top:14px;display:none"></div>
-          </div>
-        </div>
+
 
         <div class="logs-section" style="margin-top:28px">
           <h3>SE Ranking Data API</h3>
