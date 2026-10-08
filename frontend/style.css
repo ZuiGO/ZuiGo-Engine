@@ -654,34 +654,39 @@ body {
 
 .tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 26px;
+  flex-direction: column;
+  gap: 4px;
+  border-bottom: none;
+  margin-bottom: 12px;
   padding-bottom: 0;
 }
 
 .tab {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   background: none;
   border: none;
-  padding: 11px 18px;
-  font-size: 16px;
+  padding: 10px 14px;
+  font-size: 14.5px;
   font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;
-  border-bottom: 2.5px solid transparent;
-  margin-bottom: -1px;
-  transition: color 0.18s, border-color 0.18s, background 0.18s;
-  white-space: nowrap;
-  border-radius: 8px 8px 0 0;
+  transition: all 0.18s;
+  text-align: left;
+  border-radius: 8px;
+  width: 100%;
 }
+
+.tab svg { width: 18px; height: 18px; opacity: 0.75; flex-shrink: 0; }
 
 .tab:hover { color: var(--text); background: var(--surface-hover); }
 .tab.active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
-  background: var(--primary-soft);
+  color: var(--text);
+  background: var(--surface-hover);
+  box-shadow: inset 4px 0 0 var(--primary);
 }
+.tab.active svg { opacity: 1; color: var(--primary); }
 
 .tab-content { padding: 10px 0; animation: tabFade 0.22s ease; }
 
@@ -698,7 +703,7 @@ body {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -2578,6 +2583,45 @@ body.jobless #rail-nav { display: none; }
   z-index: 10;
   isolation: isolate;
   background: var(--bg-base);
+}
+
+.left-rail {
+  background: #111827 !important;
+  border-radius: 12px;
+  padding: 16px 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  margin-right: 8px;
+}
+
+.left-rail .rail-section {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0 4px;
+  color: #9ca3af;
+}
+
+.left-rail .rail-title, .left-rail .rail-explain {
+  color: #9ca3af;
+}
+
+.left-rail .tab {
+  color: #9ca3af;
+}
+
+.left-rail .tab:hover {
+  background: rgba(255,255,255,0.06);
+  color: #f3f4f6;
+}
+
+.left-rail .tab.active {
+  background: rgba(255,255,255,0.1);
+  color: #ffffff;
+  box-shadow: inset 4px 0 0 #3b82f6;
+}
+
+.left-rail .tab.active svg {
+  color: #60a5fa;
 }
 
 .rail-section {

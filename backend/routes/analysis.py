@@ -497,18 +497,22 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_s
                     },
                     "freshness": {
                         "decayed_pages_count": w3.get("freshness", {}).get("decayed_pages_count", 0),
-                        "score": w3.get("freshness", {}).get("score", 100)
+                        "score": w3.get("freshness", {}).get("score", 100),
+                        "evidence": w3.get("freshness", {}).get("decayed_pages", [])
                     },
                     "content_growth": {
                         "opportunities": len(w3.get("growth", {}).get("opportunities", []))
                     },
                     "citations": {
                         "profiles_found": w3.get("citations", {}).get("profiles_found", 0),
-                        "score": w3.get("citations", {}).get("score", 0)
+                        "score": w3.get("citations", {}).get("score", 0),
+                        "evidence": w3.get("citations", {}).get("results", [])
                     },
                     "brand_reputation": {
                         "sentiment": w3.get("brand", {}).get("sentiment", "unknown"),
-                        "risk_score": w3.get("brand", {}).get("risk_score", 0)
+                        "risk_score": w3.get("brand", {}).get("risk_score", 0),
+                        "evidence_summary": w3.get("brand", {}).get("summary", ""),
+                        "snippets_analyzed": w3.get("brand", {}).get("snippets_analyzed", 0)
                     },
                     "sitewide_factors": w3.get("sitewide_factors", {}),
                     "sitemap": {

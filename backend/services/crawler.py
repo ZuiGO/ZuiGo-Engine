@@ -418,7 +418,7 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
 
             results = await asyncio.gather(*tasks)
 
-            for result in results:
+            for url, result in zip(urls_to_crawl, results):
                 if result:
                     crawled += 1
                     pages_since_context_reset += 1
@@ -460,6 +460,8 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
                     )
 
                     await update_progress(crawled, f"Crawled {urlparse(result['url']).path or '/'}")
+                else:
+                    await update_progress(crawled, f"Skipped/Failed {urlparse(url).path or '/'}")
 
         if context is not None:
             await context.close()

@@ -758,25 +758,65 @@ function loadOverview(summary) {
     ? `<div class="stat-card"><div class="stat-value" style="font-size:16px">${geo.blocked_ai_crawlers?.length ? "Blocked: " + escapeHtml(geo.blocked_ai_crawlers.join(", ")) : "AI crawlers OK"}</div><div class="stat-label">AI Search Readiness${geo.score !== undefined && geo.score !== null ? " (" + geo.score + "/100)" : ""}</div></div>`
     : "";
   const ai = (summary.summary?.ai_visibility) || {};
-  const scoreBar = s => (s !== undefined && s !== null)
-    ? `<div style="height:5px;border-radius:3px;background:var(--border);margin-top:6px;overflow:hidden"><div style="width:${Math.max(0, Math.min(100, s))}%;height:100%;background:${s >= 70 ? "#16a34a" : s >= 40 ? "#d97706" : "#dc2626"}"></div></div>`
-    : "";
+  const radialGauge = (score, size = 64) => {
+    if (score === undefined || score === null) return "";
+    const radius = size * 0.4;
+    const circ = 2 * Math.PI * radius;
+    const offset = circ - (score / 100) * circ;
+    const color = score >= 70 ? "var(--status-ok)" : score >= 40 ? "var(--status-redirect)" : "var(--status-broken)";
+    return `
+      <div style="position:relative; width:${size}px; height:${size}px; margin: 0 auto 12px;">
+        <svg viewBox="0 0 ${size} ${size}" style="transform: rotate(-90deg); width: 100%; height: 100%;">
+          <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="var(--border)" stroke-width="6" />
+          <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="${color}" stroke-width="6" stroke-dasharray="${circ}" stroke-dashoffset="${offset}" stroke-linecap="round" style="transition: stroke-dashoffset 1s ease-out;" />
+        </svg>
+        <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:700;">${score}%</div>
+      </div>
+    `;
+  };
+
   const aiCard = ai.score !== undefined && ai.score !== null
-    ? `<div class="stat-card"><div class="stat-value" style="font-size:16px">${ai.score}/100</div><div class="stat-label">AI Visibility${ai.blocked_ai_agents?.length ? " · blocked" : ""}${ai.llms_txt_present ? " · llms.txt" : ""}</div>${scoreBar(ai.score)}</div>`
+    ? `<div class="stat-card" style="text-align:center;">${radialGauge(ai.score)}<div class="stat-label" style="margin-top:0">AI Visibility</div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${ai.blocked_ai_agents?.length ? "Blocked" : "Clear"}${ai.llms_txt_present ? " · llms.txt" : ""}</div></div>`
     : "";
   const local = (summary.summary?.local_seo) || {};
   const localCard = local.score !== undefined && local.score !== null
-    ? `<div class="stat-card"><div class="stat-value" style="font-size:16px">${local.score}/100</div><div class="stat-label">Local SEO${local.local_business_schema ? " ✓" : ""}${local.nap_inconsistent ? " · NAP mismatch" : ""}</div>${scoreBar(local.score)}</div>`
+    ? `<div class="stat-card" style="text-align:center;">${radialGauge(local.score)}<div class="stat-label" style="margin-top:0">Local SEO</div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${local.local_business_schema ? "✓ Schema" : "No Schema"}</div></div>`
     : "";
   const failedCard = nested.failed_urls_count
-    ? `<div class="stat-card"><div class="stat-value" style="font-size:16px;color:#dc2626">${nested.failed_urls_count}</div><div class="stat-label">Pages Failed to Fetch</div></div>`
+    ? `<div class="stat-card"><div class="stat-value" style="font-size:30px;color:#dc2626">${nested.failed_urls_count}</div><div class="stat-label">Pages Failed to Fetch</div></div>`
     : "";
+  
+  const freshness = (summary.summary?.freshness) || {};
+  const freshnessCard = freshness.score !== undefined
+    ? `<div class="stat-card" style="text-align:center;">${radialGauge(freshness.score)}<div class="stat-label" style="margin-top:0">Content Freshness</div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${freshness.decayed_pages_count ? freshness.decayed_pages_count + " decayed" : "All fresh"}</div></div>`
+    : "";
+
+  const brand = (summary.summary?.brand_reputation) || {};
+  const brandCard = brand.sentiment && brand.sentiment !== "unknown"
+    ? `<div class="stat-card" style="text-align:center;">${radialGauge(100 - brand.risk_score)}<div class="stat-label" style="margin-top:0">Brand Sentiment: <span style="text-transform:capitalize">${brand.sentiment}</span></div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">Risk Score: ${brand.risk_score}</div></div>`
+    : "";
+
+  const citations = (summary.summary?.citations) || {};
+  const citationCard = citations.score !== undefined
+    ? `<div class="stat-card" style="text-align:center;">${radialGauge(citations.score)}<div class="stat-label" style="margin-top:0">B2B Citations</div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${citations.profiles_found} Profiles Found</div></div>`
+    : "";
+
+  const cat = (summary.summary?.catalogue) || {};
+  const catalogueCard = cat.total_plps || cat.total_pdps
+    ? `<div class="stat-card"><div class="stat-value" style="font-size:16px">${cat.total_plps} PLP / ${cat.total_pdps} PDP</div><div class="stat-label">Catalogue Health${cat.potential_crawl_trap ? " · Trap Detected!" : ""}</div></div>`
+    : "";
+    
+  const redirectMappings = summary.summary?.redirect_mappings || 0;
+  const redirectCard = redirectMappings > 0
+    ? `<div class="stat-card"><div class="stat-value" style="font-size:16px">${redirectMappings}</div><div class="stat-label">Redirect Mappings Generated</div></div>`
+    : "";
+
   stats.innerHTML = `
     <div class="stat-card"><div class="stat-value" data-count="${summary.total_pages}">0</div><div class="stat-label">Pages Crawled</div></div>
     <div class="stat-card"><div class="stat-value" data-count="${summary.total_content_items}">0</div><div class="stat-label">Content Items</div></div>
     <div class="stat-card"><div class="stat-value" data-count="${summary.total_action_items}">0</div><div class="stat-label">SEO Action Items</div></div>
     <div class="stat-card"><div class="stat-value" data-count="${summary.summary?.total_links || 0}">0</div><div class="stat-label">Total Links Found</div></div>
-    ${geoCard}${aiCard}${localCard}${failedCard}
+    ${geoCard}${aiCard}${localCard}${failedCard}${freshnessCard}${brandCard}${citationCard}${catalogueCard}${redirectCard}
   `;
   applyCounts(stats);
 
@@ -790,6 +830,61 @@ function loadOverview(summary) {
       <div><div class="ct-count">${count}</div><div class="ct-name">${type}</div></div>
     </div>
   `).join("");
+
+  const evidenceContainer = document.getElementById("overview-evidence");
+  if (evidenceContainer) {
+    let html = "";
+    
+    // Freshness Evidence
+    const freshnessEv = freshness.evidence || [];
+    if (freshnessEv.length > 0) {
+      html += `
+        <div class="stat-card" style="margin-bottom:16px;">
+          <h4 style="margin-bottom:8px;font-size:16px;font-weight:700;">Content Decay Evidence</h4>
+          <p style="font-size:14px;color:var(--text-secondary);margin-bottom:12px;">The following pages haven't been updated in over 6 months:</p>
+          <div style="max-height:200px;overflow-y:auto;background:var(--bg-base);border:1px solid var(--border);border-radius:8px;padding:8px;">
+            ${freshnessEv.map(e => `<div style="font-size:13px;padding:6px;border-bottom:1px solid var(--border);word-break:break-all;"><strong style="color:var(--danger)">${e.last_modified ? e.last_modified.split('T')[0] : 'Old'}</strong> &mdash; <a href="${e.url}" target="_blank" style="color:var(--primary);text-decoration:none;">${e.url}</a></div>`).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Brand Evidence
+    if (brand.evidence_summary) {
+      html += `
+        <div class="stat-card" style="margin-bottom:16px;">
+          <h4 style="margin-bottom:8px;font-size:16px;font-weight:700;">Brand Reputation Evidence</h4>
+          <p style="font-size:14px;color:var(--text-secondary);margin-bottom:12px;">Based on analyzing <strong>${brand.snippets_analyzed || 0}</strong> organic search snippets for your brand:</p>
+          <div style="font-size:14px;background:var(--bg-base);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);line-height:1.5;">
+            ${escapeHtml(brand.evidence_summary)}
+          </div>
+        </div>
+      `;
+    }
+
+    // Citations Evidence
+    const citationsEv = citations.evidence || [];
+    if (citationsEv.length > 0) {
+      html += `
+        <div class="stat-card" style="margin-bottom:16px;">
+          <h4 style="margin-bottom:8px;font-size:16px;font-weight:700;">B2B Citations Evidence</h4>
+          <p style="font-size:14px;color:var(--text-secondary);margin-bottom:12px;">Found your company profiles on the following directories:</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;">
+            ${citationsEv.map(e => `
+              <div style="font-size:13px;padding:10px;background:var(--bg-base);border:1px solid var(--border);border-radius:8px;">
+                <strong>${e.directory}</strong>: 
+                ${e.found ? `<span style="color:var(--status-ok);">✓ Found</span>` : `<span style="color:var(--status-unchecked);">✕ Missing</span>`}
+                ${e.top_url ? `<br><a href="${e.top_url}" target="_blank" style="color:var(--primary);text-decoration:none;display:inline-block;margin-top:4px;word-break:break-all;">View Profile</a>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    evidenceContainer.innerHTML = html;
+  }
+
 
   const flows = document.getElementById("overview-flows");
   if (flows) {
