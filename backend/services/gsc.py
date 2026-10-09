@@ -7,6 +7,8 @@ GSC_CLIENT_SECRET in .env act as fallback). The analyzed domain must be a
 verified property in Search Console.
 """
 
+import asyncio
+import os
 from datetime import datetime, timedelta
 from urllib.parse import quote, urlencode
 
@@ -130,25 +132,53 @@ async def exchange_code(code: str, job_id: str, redirect_uri: str | None = None)
     return {"domain": domain, "ok": True}
 
 
+_sa_cache: dict = {"token": None, "expiry": None}
+
+
+def _resolve_service_account_path() -> str:
+    path = settings.gsc_service_account_file
+    if os.path.exists(path):
+        return path
+    # Fall back to the project root (backend/services/gsc.py -> repo root).
+    root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    return os.path.join(root, path)
+
+
+def _service_account_refresh_sync(path: str) -> tuple[str, datetime | None]:
+    # google-auth is synchronous (blocking HTTP); callers run this in a thread.
+    from google.auth.transport.requests import Request
+    from google.oauth2 import service_account
+
+    creds = service_account.Credentials.from_service_account_file(path, scopes=[SCOPE])
+    creds.refresh(Request())
+    return creds.token, creds.expiry  # expiry is naive UTC
+
+
+async def _service_account_token() -> str | None:
+    """Service-account access token, cached until ~5 min before expiry.
+
+    Without the cache every Search Analytics call re-read the key file and did
+    a blocking network refresh on the event loop.
+    """
+    expiry = _sa_cache["expiry"]
+    if _sa_cache["token"] and expiry and expiry > datetime.utcnow() + timedelta(minutes=5):
+        return _sa_cache["token"]
+    try:
+        token, expiry = await asyncio.to_thread(
+            _service_account_refresh_sync, _resolve_service_account_path()
+        )
+    except Exception as e:
+        logger.error("Failed to get token from service account %s: %s", settings.gsc_service_account_file, e)
+        return None
+    _sa_cache["token"], _sa_cache["expiry"] = token, expiry
+    return token
+
+
 async def _valid_access_token(domain: str) -> str | None:
     if settings.gsc_service_account_file:
-        try:
-            import google.auth
-            from google.oauth2 import service_account
-            from google.auth.transport.requests import Request
-            import os
-            
-            # Check if file exists, if not relative to root
-            filepath = settings.gsc_service_account_file
-            if not os.path.exists(filepath):
-                # Try relative to backend dir or project root
-                filepath = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), settings.gsc_service_account_file)
-                
-            creds = service_account.Credentials.from_service_account_file(filepath, scopes=[SCOPE])
-            creds.refresh(Request())
-            return creds.token
-        except Exception as e:
-            logger.error("Failed to get token from service account %s: %s", settings.gsc_service_account_file, e)
+        token = await _service_account_token()
+        if token:
+            return token
 
     if settings.gsc_refresh_token:
         try:

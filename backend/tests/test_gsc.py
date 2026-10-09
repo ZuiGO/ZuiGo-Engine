@@ -149,18 +149,30 @@ class TestFetchParsing:
         async def fake_creds(domain):
             return {"domain": domain, "access_token": "tok", "expires_at": None}
 
+        async def fake_token(domain):
+            return "tok"
+
         monkeypatch.setattr(gsc, "_get_credentials", fake_creds)
         monkeypatch.setattr(gsc, "_save_credentials", fake_save)
+        # fetch_gsc validates a token first (service-account / env refresh-token support).
+        monkeypatch.setattr(gsc, "_valid_access_token", fake_token)
 
         async def fake_list(domain):
             return ["sc-domain:example.com"]
 
-        async def fake_query(site, domain, dim, days):
-            return SAMPLE_ROWS
-            
+        async def fake_query(site, domain, dim, days, **kwargs):
+            # fetch_gsc also asks for device/country/appearance/discover/news
+            # breakdowns (row_limit / search_type kwargs); only the first query
+            # (dimension "query") feeds the asserted totals.
+            return SAMPLE_ROWS if dim == ["query"] else []
+
         async def fake_cannib(site, domain, days):
             return []
-    
+
+        async def fake_sitemaps(domain):
+            return []
+
+        monkeypatch.setattr(gsc, "list_sitemaps", fake_sitemaps)
         monkeypatch.setattr(gsc, "list_sites", fake_list)
         monkeypatch.setattr(gsc, "_analytics_query", fake_query)
         monkeypatch.setattr(gsc, "_cannibalization_query", fake_cannib)
@@ -298,3 +310,40 @@ class TestInspectionAndCannibalization:
         assert c[0]["query"] == "query1"
         assert len(c[0]["pages"]) == 2
         assert c[0]["total_impressions"] == 160
+
+@pytest.mark.asyncio
+class TestServiceAccountToken:
+    async def test_token_is_cached_and_not_refreshed_per_call(self, monkeypatch):
+        from datetime import datetime, timedelta
+
+        calls = {"n": 0}
+
+        def fake_refresh(path):
+            calls["n"] += 1
+            return "sa-token", datetime.utcnow() + timedelta(hours=1)
+
+        monkeypatch.setattr(gsc, "_service_account_refresh_sync", fake_refresh)
+        monkeypatch.setattr(gsc.settings, "gsc_service_account_file", "sa.json")
+        monkeypatch.setitem(gsc._sa_cache, "token", None)
+        monkeypatch.setitem(gsc._sa_cache, "expiry", None)
+
+        assert await gsc._valid_access_token("example.com") == "sa-token"
+        assert await gsc._valid_access_token("example.com") == "sa-token"
+        assert await gsc._valid_access_token("other.com") == "sa-token"
+        assert calls["n"] == 1
+
+    async def test_failure_falls_through_to_stored_credentials(self, monkeypatch):
+        def boom(path):
+            raise RuntimeError("bad key")
+
+        async def no_creds(domain):
+            return None
+
+        monkeypatch.setattr(gsc, "_service_account_refresh_sync", boom)
+        monkeypatch.setattr(gsc.settings, "gsc_service_account_file", "sa.json")
+        monkeypatch.setattr(gsc.settings, "gsc_refresh_token", "")
+        monkeypatch.setattr(gsc, "_get_credentials", no_creds)
+        monkeypatch.setitem(gsc._sa_cache, "token", None)
+        monkeypatch.setitem(gsc._sa_cache, "expiry", None)
+
+        assert await gsc._valid_access_token("example.com") is None
