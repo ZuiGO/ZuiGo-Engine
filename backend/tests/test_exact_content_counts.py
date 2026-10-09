@@ -46,3 +46,17 @@ def test_query_variants_are_distinct_urls():
     items = detect_content_types("https://x.example/", html)
     urls = {i["source_url"] for i in items}
     assert urls == {"https://x.example/a.png", "https://x.example/a.png?v=2"}
+
+def test_img_declared_dimensions_are_preserved():
+    """crawler.py persists item width/height; the classifier must keep emitting them."""
+    html = "<img src='/a.png' width='800' height='600' alt='x'><img src='/b.png'>"
+    items = {i["source_url"]: i for i in detect_content_types("https://x.example/", html)}
+    assert items["https://x.example/a.png"]["width"] == "800"
+    assert items["https://x.example/a.png"]["height"] == "600"
+    assert items["https://x.example/b.png"]["width"] is None
+
+
+def test_object_embed_detected():
+    html = "<object data='/menu.pdf'></object>"
+    items = detect_content_types("https://x.example/", html)
+    assert any(i["tag"] == "object" for i in items)
