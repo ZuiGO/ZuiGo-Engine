@@ -37,11 +37,12 @@ Constraints:
 Output ONLY a JSON object: {{"reasoning": "...", "tool": "<tool name or complete>", "args": {{...}}}}"""
 
 
-def _tools_json() -> str:
+def _tools_json(allowed_tools: list[str] | None = None) -> str:
     return json.dumps(
         [
-            {"name": t["name"], "description": t["description"], "parameters": t["parameters"]}
+            {"name": t.name, "description": t.description, "parameters": t.parameters}
             for t in TOOL_REGISTRY.values()
+            if allowed_tools is None or t.name in allowed_tools
         ],
         ensure_ascii=False,
         indent=2,
@@ -52,13 +53,47 @@ def _state_json(state: dict) -> str:
     return json.dumps(state, ensure_ascii=False, default=str)[:6000]
 
 
-async def decide(state: dict) -> AgentDecision:
+async def decide(
+    state: dict,
+    *,
+    allowed_tools: list[str] | None = None,
+    system_prefix: str = "",
+) -> AgentDecision:
+    """Pick the next tool.
+
+    ``allowed_tools`` / ``system_prefix`` let a specialised domain agent
+    (agent_swarm.BaseAgent) restrict the tool menu and prepend its own role
+    prompt. With both left at their defaults this is the generic planner.
+    """
     if not settings.groq_api_key:
-        return _fallback_decision(state)
-    return await _llm_decision(state)
+        decision = _fallback_decision(state)
+    else:
+        decision = await _llm_decision(state, allowed_tools=allowed_tools, system_prefix=system_prefix)
+    return _enforce_allowed(decision, allowed_tools)
 
 
-async def _llm_decision(state: dict) -> AgentDecision:
+def _enforce_allowed(decision: AgentDecision, allowed_tools: list[str] | None) -> AgentDecision:
+    """A restricted agent must never be handed a tool outside its menu.
+
+    The deterministic fallback is domain-agnostic (crawl -> analyze -> ...), so
+    for a restricted agent it may pick a disallowed tool; end the run instead.
+    """
+    if allowed_tools is None or not decision.tool or decision.tool == "complete":
+        return decision
+    if decision.tool in allowed_tools:
+        return decision
+    logger.warning("Planner chose %s which is outside this agent's tools %s; completing", decision.tool, allowed_tools)
+    return AgentDecision(
+        reasoning=f"Tool '{decision.tool}' is not available to this agent; nothing further to do.",
+        tool="complete",
+    )
+
+
+async def _llm_decision(
+    state: dict,
+    allowed_tools: list[str] | None = None,
+    system_prefix: str = "",
+) -> AgentDecision:
     from groq import AsyncGroq
 
     client = AsyncGroq(api_key=settings.groq_api_key)
@@ -69,8 +104,10 @@ async def _llm_decision(state: dict) -> AgentDecision:
         budget_remaining=float(state.get("budget_remaining", 0)),
         steps_used=state.get("steps_used", 0),
         max_steps=state.get("max_steps", 15),
-        tools=_tools_json(),
+        tools=_tools_json(allowed_tools),
     )
+    if system_prefix:
+        system = system_prefix.strip() + "\n\n" + system
     user = "Current state:\n" + _state_json(state)
 
     for attempt in range(2):
@@ -87,14 +124,14 @@ async def _llm_decision(state: dict) -> AgentDecision:
         except Exception as e:
             logger.warning("Planner LLM attempt %s failed: %s", attempt + 1, e)
             continue
-        decision = _validate_decision(payload, state)
+        decision = _validate_decision(payload, state, allowed_tools)
         if decision:
             return decision
     logger.warning("Planner LLM returned invalid decision; using fallback")
     return _fallback_decision(state)
 
 
-def _validate_decision(payload: dict, state: dict) -> AgentDecision | None:
+def _validate_decision(payload: dict, state: dict, allowed_tools: list[str] | None = None) -> AgentDecision | None:
     try:
         decision = AgentDecision(
             reasoning=str(payload.get("reasoning", ""))[:1000],
@@ -107,6 +144,8 @@ def _validate_decision(payload: dict, state: dict) -> AgentDecision | None:
         return decision
     spec = TOOL_REGISTRY.get(decision.tool)
     if not spec:
+        return None
+    if allowed_tools is not None and decision.tool not in allowed_tools:
         return None
     if not isinstance(decision.args, dict):
         return None

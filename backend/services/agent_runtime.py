@@ -138,10 +138,14 @@ class AgentRuntime:
         await self._persist_episode(run)
         return True
 
+    async def _decide(self, state: dict) -> AgentDecision:
+        """Planner hook. Specialised agents (agent_swarm.BaseAgent) override this."""
+        return await decide(state)
+
     async def _decide_with_guard(self, run: dict) -> AgentDecision | None:
         steps = run.get("steps") or []
         state = self._build_state(run)
-        decision = await decide(state)
+        decision = await self._decide(state)
         if not decision or not decision.tool:
             return None
         if decision.tool == "complete":
