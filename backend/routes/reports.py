@@ -188,7 +188,7 @@ footer { margin-top: 26px; padding-top: 10px; border-top: 1px solid #e2e8f0; col
 """
 
 
-async def _report_html(job_id: str):
+async def _detailed_report_html(job_id: str):
     db = get_db()
     job = await db.analysis_jobs.find_one({"_id": job_id})
     if not job:
@@ -784,6 +784,18 @@ async def _report_html(job_id: str):
         + '</body></html>'
     )
     return html
+
+async def _report_html(job_id: str):
+    from backend.services.report_generator import generate_monthly_report_html
+    return await generate_monthly_report_html(job_id)
+
+@router.get("/{job_id}/detailed")
+async def download_detailed_report(job_id: str):
+    from fastapi.responses import HTMLResponse
+    html = await _detailed_report_html(job_id)
+    if isinstance(html, dict):
+        return html
+    return HTMLResponse(html)
 
 
 async def _render_pdf(html: str) -> bytes | None:

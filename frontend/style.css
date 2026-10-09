@@ -2566,7 +2566,6 @@ body {
 
 .dashboard-grid.hidden { display: none; }
 
-body.jobless #tabs,
 body.jobless #rail-nav { display: none; }
 
 .left-rail,
@@ -2939,11 +2938,10 @@ body.jobless #rail-nav { display: none; }
 @media (min-width: 1024px) {
   .dashboard-grid { grid-template-columns: minmax(176px, 206px) minmax(0, 1fr); align-items: start; }
   .left-rail { display: flex; }
-  .tabs { display: none; }
 }
 @media (min-width: 1280px) {
-  .dashboard-grid { grid-template-columns: minmax(176px, 206px) minmax(0, 1fr); }
-  .right-rail { display: none; }
+  .dashboard-grid { grid-template-columns: minmax(176px, 206px) minmax(0, 1fr) minmax(264px, 348px); }
+  .right-rail { display: flex; flex-direction: column; }
 }
 
 /* Crawl dashboard: phase chips + live stats */

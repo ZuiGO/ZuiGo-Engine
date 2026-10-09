@@ -65,6 +65,26 @@ function emptyState(title, msg, ctaHtml) {
 // DOM refs
 const form = document.getElementById("analyze-form");
 const urlInput = document.getElementById("url-input");
+
+if (urlInput) {
+  urlInput.addEventListener('input', (e) => {
+    const val = e.target.value.trim();
+    if (!val) {
+      urlInput.classList.remove('valid', 'invalid');
+      return;
+    }
+    // Basic regex: requires at least a dot (e.g. example.com). Protocol is optional since we prefix.
+    const isValid = /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(:\d+)?(\/.*)?$/.test(val.replace(/^https?:\/\//, ''));
+    if (isValid) {
+      urlInput.classList.add('valid');
+      urlInput.classList.remove('invalid');
+    } else {
+      urlInput.classList.add('invalid');
+      urlInput.classList.remove('valid');
+    }
+  });
+}
+
 const analyzeBtn = document.getElementById("analyze-btn");
 const inputSection = document.getElementById("input-section");
 const progressSection = document.getElementById("progress-section");
@@ -90,8 +110,13 @@ document.querySelectorAll(".examples a[data-url]").forEach(a => {
 // Form submit
 form.addEventListener("submit", async e => {
   e.preventDefault();
-  const url = urlInput.value.trim();
+  let url = urlInput.value.trim();
   if (!url) return;
+  
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url;
+    urlInput.value = url;
+  }
 
   analyzeBtn.disabled = true;
   analyzeBtn.textContent = "Analyzing...";
@@ -175,6 +200,7 @@ document.querySelectorAll(".tab").forEach(tab => {
       if (currentTab === "links") loadLinks(currentJobId);
       if (currentTab === "actions") loadActions(currentJobId);
       if (currentTab === "report") loadReport(currentJobId);
+      if (currentTab === "register") loadRegister(currentJobId);
       if (currentTab === "chat") initChat();
       if (currentTab === "seo-insights") loadSeoInsights(currentJobId);
       if (currentTab === "competitors") loadCompetitors(currentJobId);
@@ -195,7 +221,7 @@ document.querySelectorAll(".tab").forEach(tab => {
 // Dashboard rails: context, quick nav, activity feed, docked chat
 const RAIL_TAB_LABELS = {
   sites: "Sites", overview: "Overview", pages: "Pages", content: "Content",
-  links: "Links", actions: "SEO Actions", report: "Report", "seo-insights": "SEO Insights",
+  links: "Links", actions: "SEO Actions", register: "Register", report: "Report", "seo-insights": "SEO Insights",
   competitors: "Competitors", quality: "Quality", schedules: "Schedules",
   logs: "Alerts", settings: "Settings",
 };
@@ -206,6 +232,7 @@ const TAB_GUIDES = {
   content: "Every extracted content item (images, PDFs, video, documents...) with preview and the page it lives on.",
   links: "Link health, the full link list (OK / broken / redirect / blocked / unreachable / external), backlinks and honest redirect counts.",
   actions: "Impact-ranked SEO actions with evidence. Approve or reject — approved changes become versioned before/after snippets.",
+  register: "Execution Register tracking every recurring SEO task.",
   report: "The full branded analysis: KPIs, findings with evidence, quick wins, methodology, download and email options.",
   "seo-insights": "Live keyword, SERP, backlink and competitor data (SE Ranking) merged with what the crawl found locally.",
   competitors: "Crawl competitor sites and diff 8 gap dimensions against this site. Blocked crawls still yield a partial SE Ranking + SERP report.",
@@ -4222,7 +4249,7 @@ function linkifyText(text, maxLen) {
   return escapeHtml(label).replace(/(https?:\/\/[^\s<>"']+)/g, m => `<a href="${m}" target="_blank" rel="noopener noreferrer">${m}</a>`);
 }
 
-const VALID_TABS = new Set(["sites", "overview", "pages", "content", "links", "actions", "report", "seo-insights", "competitors", "quality", "schedules", "logs", "settings", "sandbox-approvals", "style-guide"]);
+const VALID_TABS = new Set(["sites", "overview", "pages", "content", "links", "actions", "register", "report", "seo-insights", "competitors", "quality", "schedules", "logs", "settings", "sandbox-approvals", "style-guide"]);
 
 function parseHash() {
   const m = window.location.hash.match(/^#job\/([a-zA-Z0-9-]+)(?:\/([a-z-]+))?/);
@@ -4572,10 +4599,15 @@ async function rollbackSandboxSuggestion(id, btnEl) {
 
 async function startSinglePageAnalysis(event) {
   event.preventDefault();
-  const urlInput = document.getElementById('url-input').value.trim();
+  let urlInput = document.getElementById('url-input').value.trim();
   if (!urlInput) {
     showToast("Please enter a URL first", true);
     return;
+  }
+  
+  if (!urlInput.startsWith('http://') && !urlInput.startsWith('https://')) {
+    urlInput = 'https://' + urlInput;
+    document.getElementById('url-input').value = urlInput;
   }
 
   const btn = document.getElementById('single-page-btn');
@@ -4960,4 +4992,117 @@ async function inspectGscUrl(url) {
   }
 }
 
+async function loadRegister(siteId) {
+  if (!siteId) return;
+  const container = document.getElementById("register-container");
+  if (!container) return;
+  container.innerHTML = '<div class="loading-state">Loading register...</div>';
+  
+  try {
+    const resp = await fetch(`${API_BASE}/sites/${siteId}/register`);
+    if (!resp.ok) throw new Error("Failed to load register");
+    const data = await resp.json();
+    
+    // Set up Cadence Report download links
+    const baseUrl = `/api/sites/${currentSiteId}/reports/cadence`;
+    const pk = data.periodKey;
+    document.getElementById("btn-cadence-weekly").href = `${baseUrl}/weekly?periodKey=${pk}`;
+    document.getElementById("btn-cadence-monthly").href = `${baseUrl}/monthly?periodKey=${pk}&pdf=1`;
+    document.getElementById("btn-cadence-quarterly").href = `${baseUrl}/quarterly?periodKey=${pk}&pdf=1`;
+    
+    // Render Tallies
+    let html = `
+      <div class="metrics-grid" style="margin-bottom: 24px;">
+        <div class="stat-card">
+          <div class="stat-title">Capability</div>
+          <div class="stat-value text-md" style="font-size: 1.1rem; line-height: 1.4;">
+            <span style="color:var(--status-ok)">Auto: ${data.tallies.capability.auto}</span><br>
+            <span style="color:var(--status-warning)">Assisted: ${data.tallies.capability.assisted}</span><br>
+            <span style="color:var(--text-dim)">Manual: ${data.tallies.capability.manual}</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-title">This Period (${data.periodKey})</div>
+          <div class="stat-value text-md" style="font-size: 1.1rem; line-height: 1.4;">
+            <span style="color:var(--status-ok)">Done: ${data.tallies.period.done}</span><br>
+            <span style="color:var(--status-warning)">Due: ${data.tallies.period.due}</span><br>
+            <span style="color:var(--status-error)">Overdue: ${data.tallies.period.overdue}</span>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Simple Cadence grouping
+    const cadences = ["weekly", "monthly", "quarterly"];
+    for (const cad of cadences) {
+      const tasks = data.tasks.filter(t => t.cadence === cad);
+      if (tasks.length === 0) continue;
+      
+      html += `<div class="settings-card">`;
+      html += `<h3 style="text-transform: capitalize;">${cad} Tasks</h3>`;
+      html += `<table class="data-table"><thead><tr>
+        <th>ID</th><th>Task</th><th>Pillar</th><th>Mode</th><th>Status</th><th>Actions</th>
+      </tr></thead><tbody>`;
+      
+      for (const t of tasks) {
+        const stateColor = (t.derivedState === 'done') ? 'var(--status-ok)' : 
+                           (t.derivedState === 'overdue') ? 'var(--status-error)' : 
+                           (t.derivedState === 'n/a') ? 'var(--text-dim)' : 'var(--status-warning)';
+                           
+        const disabledInfo = t.enabled ? '' : `<div class="text-sm text-dim" style="margin-top:4px;"><i>Disabled: ${escapeHtml(t.disabledReason)}</i></div>`;
+        const actionBtn = t.enabled ? 
+          `<button class="btn-secondary btn-sm" onclick="toggleTaskConfig('${t.id}', false)">Disable</button>` : 
+          `<button class="btn-primary btn-sm" onclick="toggleTaskConfig('${t.id}', true)">Enable</button>`;
+
+        html += `<tr style="${!t.enabled ? 'opacity: 0.6;' : ''}">
+          <td>${t.id}</td>
+          <td><strong>${escapeHtml(t.title)}</strong><div class="text-sm text-dim">${escapeHtml(t.commitment)}</div>${disabledInfo}</td>
+          <td><span class="status-badge" style="background: var(--bg-elevated)">${t.pillar}</span></td>
+          <td>${t.mode}</td>
+          <td><span class="status-badge" style="background: ${stateColor}; color: #fff;">${t.derivedState || 'N/A'}</span></td>
+          <td>${actionBtn}</td>
+        </tr>`;
+      }
+      
+      html += `</tbody></table></div>`;
+    }
+    
+    container.innerHTML = html;
+  } catch (err) {
+    container.innerHTML = `<div class="empty-state text-danger">${err.message}</div>`;
+  }
+}
+
+window.toggleTaskConfig = async function(taskId, enable) {
+  if (!currentSiteId) return;
+  
+  let reason = null;
+  if (!enable) {
+    reason = prompt(`Please provide a reason for disabling task ${taskId}:`);
+    if (reason === null) return; // User cancelled
+    if (reason.trim() === "") {
+      alert("A reason is required to disable a task.");
+      return;
+    }
+  }
+  
+  try {
+    const resp = await fetch(`/api/sites/${currentSiteId}/tasks/${taskId}/config`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: enable, disabledReason: reason })
+    });
+    
+    if (!resp.ok) {
+      const err = await resp.json();
+      alert(`Error: ${err.detail || err.error || "Failed to update config"}`);
+      return;
+    }
+    
+    // Reload register UI
+    loadRegister();
+  } catch (e) {
+    alert(`Error: ${e.message}`);
+  }
+};
 document.addEventListener('DOMContentLoaded', initSampleReportCard);

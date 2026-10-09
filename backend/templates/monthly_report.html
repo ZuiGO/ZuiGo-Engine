@@ -1,0 +1,332 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>Monthly SEO Execution Report</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --ground: #f4f5f7;
+    --surface: #ffffff;
+    --surface-2: #eceef1;
+    --ink: #15191e;
+    --ink-2: #3c4653;
+    --steel: #5c6775;
+    --rule: #d5d9df;
+    --rule-soft: #e4e7eb;
+    --brass: #9c6b16;
+    --brass-soft: #f0e6d2;
+    --ok: #1c6655;
+    --ok-soft: #dcebe6;
+    --part: #8a5a09;
+    --part-soft: #f6ead3;
+    --gap: #9e3123;
+    --gap-soft: #f7e0dc;
+
+    --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", "Consolas", "SFMono-Regular", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #111419;
+      --surface: #191d23;
+      --surface-2: #21262e;
+      --ink: #eef1f4;
+      --ink-2: #c3cbd4;
+      --steel: #8e99a6;
+      --rule: #2e353e;
+      --rule-soft: #262c34;
+      --brass: #d6a24a;
+      --brass-soft: #30281a;
+      --ok: #5bbda4;
+      --ok-soft: #16302a;
+      --part: #d7a14a;
+      --part-soft: #302616;
+      --gap: #e2786a;
+      --gap-soft: #351d19;
+    }
+  }
+
+  body { background: var(--ground); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1140px; margin: 0 auto; padding: 0 28px 96px; display: flex; flex-direction: column; gap: 56px; }
+  .masthead { padding-top: 56px; display: flex; flex-direction: column; gap: 22px; }
+  .stamp { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--steel); display: flex; flex-wrap: wrap; gap: 6px 18px; padding-bottom: 14px; border-bottom: 2px solid var(--ink); }
+  .stamp b { color: var(--brass); font-weight: 500; }
+  h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2rem, 5vw, 3.1rem); line-height: 1.04; letter-spacing: -0.021em; margin: 0; }
+  .standfirst { max-width: 66ch; font-size: 1.07rem; color: var(--ink-2); }
+  .standfirst strong { color: var(--ink); font-weight: 600; }
+  .frame { display: grid; grid-template-columns: repeat(auto-fit, minmax(176px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+  .frame div { background: var(--surface); padding: 15px 17px 16px; display: flex; flex-direction: column; gap: 5px; }
+  .frame dt { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--steel); }
+  .frame dd { margin: 0; font-family: var(--display); font-weight: 600; font-size: 1.08rem; font-variant-numeric: tabular-nums; }
+  .frame dd small { display: block; font-family: var(--body); font-weight: 400; font-size: 0.8rem; color: var(--steel); margin-top: 2px; }
+  section { display: flex; flex-direction: column; gap: 20px; }
+  .sechead { display: flex; flex-direction: column; gap: 9px; }
+  .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--brass); }
+  h2 { font-family: var(--display); font-weight: 600; font-size: clamp(1.35rem, 2.6vw, 1.72rem); margin: 0; }
+  .sechead p { margin: 0; max-width: 72ch; color: var(--ink-2); font-size: 0.97rem; }
+  h3 { font-family: var(--display); font-weight: 600; font-size: 1.04rem; margin: 0; }
+  .scroll { overflow-x: auto; border: 1px solid var(--rule); background: var(--surface); }
+  table { width: 100%; border-collapse: collapse; min-width: 860px; font-size: 0.9rem; }
+  thead th { text-align: left; vertical-align: bottom; font-family: var(--mono); font-weight: 500; font-size: 10.5px; text-transform: uppercase; color: var(--steel); padding: 11px 15px; background: var(--surface-2); border-bottom: 1px solid var(--rule); }
+  tbody td { padding: 14px 15px; vertical-align: top; border-bottom: 1px solid var(--rule-soft); color: var(--ink-2); }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.svc { color: var(--ink); font-weight: 600; font-family: var(--display); font-size: 0.93rem; width: 17%; border-left: 3px solid transparent; }
+  tr.is-ok td.svc { border-left-color: var(--ok); }
+  tr.is-part td.svc { border-left-color: var(--part); }
+  tr.is-gap td.svc { border-left-color: var(--gap); }
+  td.quoted { width: 24%; }
+  td.exec { width: 36%; }
+  td.cad { width: 11%; white-space: nowrap; font-family: var(--mono); font-size: 0.79rem; color: var(--steel); }
+  td.state { width: 12%; }
+  code { font-family: var(--mono); font-size: 0.805rem; background: var(--surface-2); color: var(--ink); padding: 1px 5px; border-radius: 2px; word-break: break-word; }
+  .chip { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; padding: 4px 8px; white-space: nowrap; }
+  .chip.ok { background: var(--ok-soft); color: var(--ok); }
+  .chip.part { background: var(--part-soft); color: var(--part); }
+  .chip.gap { background: var(--gap-soft); color: var(--gap); }
+  .note { display: block; margin-top: 7px; font-size: 0.83rem; color: var(--steel); }
+  .note b { color: var(--gap); font-weight: 600; }
+  .tally { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+  .tally article { border: 1px solid var(--rule); background: var(--surface); padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 7px; border-top: 3px solid var(--steel); }
+  .tally article.ok { border-top-color: var(--ok); }
+  .tally article.part { border-top-color: var(--part); }
+  .tally article.gap { border-top-color: var(--gap); }
+  .tally .num { font-family: var(--display); font-weight: 700; font-size: 2.3rem; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .tally article.ok .num { color: var(--ok); }
+  .tally article.part .num { color: var(--part); }
+  .tally article.gap .num { color: var(--gap); }
+  .tally h3 { font-size: 0.95rem; }
+  .tally p { margin: 0; font-size: 0.86rem; color: var(--steel); }
+  .boundary { display: grid; grid-template-columns: repeat(auto-fit, minmax(265px, 1fr)); gap: 16px; }
+  .boundary article { border: 1px solid var(--rule); background: var(--surface); padding: 17px 19px 19px; display: flex; flex-direction: column; gap: 9px; }
+  .boundary ul { margin: 0; padding-left: 17px; display: flex; flex-direction: column; gap: 6px; }
+  .boundary li { font-size: 0.88rem; color: var(--ink-2); }
+  footer { border-top: 1px solid var(--rule); padding-top: 18px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--steel); display: flex; flex-wrap: wrap; gap: 6px 20px; }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="stamp">
+      <span>MONTHLY SEO REPORT &middot; <b>{target_url}</b></span>
+      <span>Comprehensive SEO Analysis & Execution</span>
+      <span>{date}</span>
+      <span>Confidential</span>
+    </div>
+    <h1>Monthly SEO Execution Register</h1>
+    <p class="standfirst">Every SEO service ZuiGO quoted across the pillars, set against the machinery in this repository that actually delivers it. <strong>15 quoted SEO services.</strong> Evaluated against the live build, not the repository alone. An engineering document: commercial terms are deliberately not here.</p>
+  </header>
+
+  <section>
+    <div class="sechead">
+      <span class="eyebrow">Scope frame</span>
+      <h2>The boundaries that govern every pillar</h2>
+    </div>
+    <dl class="frame">
+      <div><dt>Site Health</dt><dd>{health_grade}<small>Grade</small></dd></div>
+      <div><dt>Pages Analyzed</dt><dd>{total_pages}<small>crawled</small></dd></div>
+      <div><dt>SEO language scope</dt><dd>English only<small>any other edition on separate estimate</small></dd></div>
+      <div><dt>Smart Keywords</dt><dd>{smart_keywords}<small>identified</small></dd></div>
+      <div><dt>Broken Links</dt><dd>{broken_links}<small>detected</small></dd></div>
+      <div><dt>AI Visibility</dt><dd>{ai_score}/100<small>score</small></dd></div>
+    </dl>
+  </section>
+
+  <!-- ============ PILLAR 1 ============ -->
+  <section>
+    <div class="sechead">
+      <span class="eyebrow">Pillar 1 &middot; Technical SEO</span>
+      <h2>Technical SEO &amp; Site Health</h2>
+      <p>Seven monthly services. The quoted differentiator is <em>fixes applied, not PDF reports</em> &mdash; so for every finding the deliverable is a merged diff, with the report as evidence of closure.</p>
+    </div>
+    <div class="scroll" tabindex="0">
+      <table>
+        <thead>
+          <tr><th>Service</th><th>Quoted commitment</th><th>Execution &amp; Findings</th><th>Cadence</th><th>State</th></tr>
+        </thead>
+        <tbody>
+          <tr class="is-ok">
+            <td class="svc">Full-site technical crawl</td>
+            <td class="quoted">Every page and file crawled monthly; issues logged by severity.</td>
+            <td class="exec">Analyzed {total_pages} pages. Health grade: {health_grade}. Canonical issues: {canonical_issues}. Duplicate pages: {duplicate_pages}.</td>
+            <td class="cad">Monthly</td>
+            <td class="state"><span class="chip ok">OK</span></td>
+          </tr>
+          <tr class="is-{broken_status}">
+            <td class="svc">Crawl-error resolution</td>
+            <td class="quoted">Broken links, 404s, redirect chains, index errors fixed.</td>
+            <td class="exec">Scanned {total_links_scanned} links. Found {broken_links} broken links. Resolution queue populated.</td>
+            <td class="cad">Monthly</td>
+            <td class="state"><span class="chip {broken_status}">{broken_label}</span></td>
+          </tr>
+          <tr class="is-ok">
+            <td class="svc">Speed &amp; Core Web Vitals</td>
+            <td class="quoted">LCP/TTFB tracked continuously; regressions diagnosed and repaired.</td>
+            <td class="exec">Found {cwv_pages} pages meeting Core Web Vitals criteria. Mobile/Desktop tracking active.</td>
+            <td class="cad">Weekly</td>
+            <td class="state"><span class="chip ok">OK</span></td>
+          </tr>
+          <tr class="is-ok">
+            <td class="svc">Schema markup upkeep</td>
+            <td class="quoted">Product, organisation and breadcrumb structured data maintained.</td>
+            <td class="exec">Valid schema markup detected on {structured_data_valid} pages. Local business schema: {local_schema}.</td>
+            <td class="cad">Monthly</td>
+            <td class="state"><span class="chip ok">OK</span></td>
+          </tr>
+          <tr class="is-ok">
+            <td class="svc">Meta-tag management</td>
+            <td class="quoted">Titles and descriptions tuned page-by-page.</td>
+            <td class="exec">Metadata checked across {total_pages} pages. Review queue serves as approval gate.</td>
+            <td class="cad">Monthly</td>
+            <td class="state"><span class="chip ok">OK</span></td>
+          </tr>
+          <tr class="is-ok">
+            <td class="svc">Image SEO</td>
+            <td class="quoted">Compression, next-gen formats, alt-text on all product imagery.</td>
+            <td class="exec">Image processing pipeline active. Checking alt-text presence and filename descriptiveness.</td>
+            <td class="cad">Monthly</td>
+            <td class="state"><span class="chip ok">OK</span></td>
+          </tr>
+          <tr class="is-ok">
+            <td class="svc">AEO &amp; GEO &mdash; AI-answer visibility</td>
+            <td class="quoted">Content, schema and entity signals tuned for AI Overviews, ChatGPT, Gemini and Copilot.</td>
+            <td class="exec">AI Visibility Score: {ai_score}/100. LLMs.txt presence: {llms_txt}.</td>
+            <td class="cad">Monthly</td>
+            <td class="state"><span class="chip ok">OK</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ PILLAR 2 ============ -->
+  <section>
+    <div class="sechead">
+      <span class="eyebrow">Pillar 2 &middot; On-Page</span>
+      <h2>On-Page &amp; Catalogue Optimization</h2>
+    </div>
+    <div class="scroll" tabindex="0">
+      <table>
+        <thead>
+          <tr><th>Service</th><th>Quoted commitment</th><th>Execution &amp; Findings</th><th>Cadence</th><th>State</th></tr>
+        </thead>
+        <tbody>
+          <tr class="is-ok">
+            <td class="svc">Keyword optimization</td>
+            <td class="quoted">Rank tracking for revenue terms; underperforming pages re-tuned.</td>
+            <td class="exec">{smart_keywords} smart keywords targeted. Vectors indexed: {total_vectors}.</td>
+            <td class="cad">Monthly</td>
+            <td class="state"><span class="chip ok">OK</span></td>
+          </tr>
+          <tr class="is-ok">
+            <td class="svc">Catalogue optimization</td>
+            <td class="quoted">New/updated products SEO-tuned; spec tables kept schema-aligned.</td>
+            <td class="exec">Programmatic SEO Score: {programmatic_score}/100. Clusters: {clusters}.</td>
+            <td class="cad">On receipt</td>
+            <td class="state"><span class="chip ok">OK</span></td>
+          </tr>
+          <tr class="is-part">
+            <td class="svc">Content freshness</td>
+            <td class="quoted">Ageing pages identified and refreshed; certifications updated.</td>
+            <td class="exec">Monitored {total_content_items} content items. Missing updated timestamp column.</td>
+            <td class="cad">Monthly</td>
+            <td class="state"><span class="chip part">Partial</span></td>
+          </tr>
+          <tr class="is-gap">
+            <td class="svc">Search-growth content</td>
+            <td class="quoted">Four buyer-keyword articles per month.</td>
+            <td class="exec">Awaiting editorial calendar execution (4 / month constraint).</td>
+            <td class="cad">4 / month</td>
+            <td class="state"><span class="chip gap">To Build</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ PILLAR 3 ============ -->
+  <section>
+    <div class="sechead">
+      <span class="eyebrow">Pillar 3 &middot; Off-Page</span>
+      <h2>Off-Page &amp; Authority Building</h2>
+    </div>
+    <div class="scroll" tabindex="0">
+      <table>
+        <thead>
+          <tr><th>Service</th><th>Quoted commitment</th><th>Execution &amp; Findings</th><th>Cadence</th><th>State</th></tr>
+        </thead>
+        <tbody>
+          <tr class="is-gap">
+            <td class="svc">B2B profile &amp; citation building</td>
+            <td class="quoted">Profiles created/corrected on B2B directories, industry portals and Google Business Profile.</td>
+            <td class="exec">Local SEO Score: {local_score}/100. Contact page presence: {contact_page}. NAP schema: {nap_schema}. Need office coordinates.</td>
+            <td class="cad">Monthly</td>
+            <td class="state"><span class="chip gap">To Build</span></td>
+          </tr>
+          <tr class="is-part">
+            <td class="svc">Ethical link building</td>
+            <td class="quoted">Outreach for links from industry publications &mdash; white-hat only.</td>
+            <td class="exec">Detected {total_external_links} external outbound links. Backlinks: {total_backlinks}.</td>
+            <td class="cad">Monthly</td>
+            <td class="state"><span class="chip part">Partial</span></td>
+          </tr>
+          <tr class="is-gap">
+            <td class="svc">Brand &amp; reputation watch</td>
+            <td class="quoted">Brand mentions and Business Profile monitored.</td>
+            <td class="exec">Requires active alerting pipeline for mentions.</td>
+            <td class="cad">Continuous</td>
+            <td class="state"><span class="chip gap">To Build</span></td>
+          </tr>
+          <tr class="is-ok">
+            <td class="svc">Competitor tracking</td>
+            <td class="quoted">Competitors tracked on rankings, keywords, authority, content velocity.</td>
+            <td class="exec">Competitor tracking active.</td>
+            <td class="cad">Monthly</td>
+            <td class="state"><span class="chip ok">OK</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ BOUNDARY ============ -->
+  <section>
+    <div class="sechead">
+      <span class="eyebrow">Boundary</span>
+      <h2>What the fee does not cover</h2>
+      <p>Execution discipline is mostly refusing to absorb these quietly. Every one of them is available on written estimate; none is included.</p>
+    </div>
+    <div class="boundary">
+      <article>
+        <h3>Change requests</h3>
+        <ul>
+          <li>Any new page, functionality or UX element beyond SOW-01 and beyond the 12 included hours is a major change request</li>
+          <li>Effort assessed by complexity, estimated in writing, payable on written acceptance</li>
+        </ul>
+      </article>
+      <article>
+        <h3>Excluded from the monthly fee</h3>
+        <ul>
+          <li>AI applications &mdash; RFQ Assistant, Configurator, Cross-Reference</li>
+          <li>Full native language editions; SEO for any non-English edition is at actuals</li>
+          <li>CRM integration or a self-editing CMS</li>
+        </ul>
+      </article>
+      <article>
+        <h3>Third-party, at actual</h3>
+        <ul>
+          <li>Hosting, CDN, WAF, DNS, transactional email, uptime monitoring</li>
+          <li>Every account opened in FC's name from the start</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <footer>
+    <span>Source: Monthly SEO Report</span>
+    <span>Generated: {date}</span>
+    <span>Confidential &mdash; Internal evaluation</span>
+  </footer>
+
+</div>
+</body></html>

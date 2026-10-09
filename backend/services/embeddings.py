@@ -85,8 +85,9 @@ async def embed_texts(texts: list[str], job_id: str | None = None) -> list[list[
             except QuotaExceeded as e:
                 from backend.logging_setup import get_logger
                 get_logger("embeddings").warning(
-                    "Gemini quota exhausted for the day (%s); using hash fallback", str(e)[:120],
+                    "Gemini quota exhausted for the day (%s); using hash fallback permanently", str(e)[:120],
                 )
+                settings.gemini_api_key = None
                 break
             except Exception as e:
                 if attempt == 0:

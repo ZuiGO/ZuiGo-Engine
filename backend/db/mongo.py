@@ -30,6 +30,10 @@ async def ensure_indexes():
     await db.agent_episodes.create_index("run_id", unique=True)
     await db.agent_episodes.create_index([("domain", 1), ("started_at", -1)])
     await db.agent_facts.create_index([("domain", 1), ("fact_key", 1)], unique=True)
+    
+    # Register collections
+    await db.task_runs.create_index([("siteId", 1), ("periodKey", 1), ("taskId", 1)])
+    await db.site_task_configs.create_index([("siteId", 1), ("taskId", 1)], unique=True)
 
 
 async def close_db():

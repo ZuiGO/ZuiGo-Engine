@@ -30,26 +30,6 @@
     </a>
     <div class="header-sub">SEO Analysis Platform</div>
     <div class="header-spacer"></div>
-    <div id="chat-widget" class="chat-widget" style="position: relative; margin-right: 12px;">
-      <button id="chat-toggle" class="chat-toggle" style="padding: 6px 12px; font-size: 13px;">💬 Chat</button>
-      <div id="chat-panel" class="chat-panel hidden" style="position: absolute; top: calc(100% + 12px); right: 0; margin-bottom: 0; transform-origin: top right; z-index: 99999;">
-        <div class="chat-panel-header">
-          <div class="chat-tabs" id="chat-tabs" style="display: none;">
-          </div>
-          <span id="chat-context-hint" class="chat-context-hint"></span>
-          <button id="chat-close" class="chat-close" title="Close">✕</button>
-        </div>
-        <div class="chat-box" id="chat-box">
-          <div class="chat-messages" id="chat-messages">
-            <div class="chat-message bot">Hi! I'm the ZuiGO Engine assistant. Ask me anything about SEO, or open an analyzed site and ask about any part of it — I'll answer using the whole analysis.</div>
-          </div>
-          <form id="chat-form" class="chat-input-group">
-            <input type="text" id="chat-input" placeholder="Ask me anything about SEO..." disabled>
-            <button type="submit" id="chat-send" disabled>Send</button>
-          </form>
-        </div>
-      </div>
-    </div>
     <button id="theme-toggle" class="icon-btn" type="button" aria-label="Toggle dark mode">
       <svg class="icon icon-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4"/>
@@ -77,23 +57,9 @@
             <span id="analyze-btn-spinner" class="analyze-btn-spinner hidden" aria-hidden="true"></span>
             <span id="analyze-btn-text">Run free site audit</span>
           </button>
-          <button type="button" id="single-page-btn" class="btn-secondary" style="margin-left:8px;" onclick="startSinglePageAnalysis(event)">
-            <span id="single-page-spinner" class="analyze-btn-spinner hidden" aria-hidden="true"></span>
-            <span id="single-page-text">Single Page Analysis (Demo)</span>
-          </button>
         </div>
         <div class="input-group" style="margin-top:10px">
           <input type="email" id="email-input" placeholder="you@example.com (optional — get the PDF report by email)" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text);flex:1">
-        </div>
-        <div class="input-group" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">
-          <label style="display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-secondary); cursor:pointer;">
-            <input type="checkbox" id="auth-toggle" onchange="document.getElementById('auth-fields').style.display = this.checked ? 'flex' : 'none'">
-            Site requires HTTP Basic Authentication
-          </label>
-          <div id="auth-fields" style="display:none; gap:8px;">
-            <input type="text" id="http-username" placeholder="Username" autocomplete="off" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text);flex:1">
-            <input type="password" id="http-password" placeholder="Password" autocomplete="off" style="padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text);flex:1">
-          </div>
         </div>
         <div class="examples-row">
           <span class="examples-label">Try:</span>
@@ -314,7 +280,6 @@
         <div id="status-badge" class="status-badge status-queued">Queued</div>
         <div class="progress-actions">
           <button id="stop-analysis-btn" class="btn-danger btn-sm" type="button">Stop</button>
-          <button id="retry-analysis-btn" class="btn-primary btn-sm hidden" type="button">Retry</button>
           <span class="progress-actions-note" id="stop-analysis-note">Stops the crawl and removes partial data.</span>
         </div>
       </div>
@@ -376,83 +341,12 @@
         <section class="rail-section rail-job" id="rail-job">
           <p class="rail-empty">Open an analysis to see its context here.</p>
         </section>
-        <nav class="tabs" id="tabs" aria-label="Dashboard sections">
-          <button class="tab active" data-tab="overview">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v10l-8 4-8-4V7z"/><path d="M12 12l8-5M12 12l-8-5M12 12v9"/></svg>
-            <span>Overview</span>
-          </button>
-          <button class="tab" data-tab="sites">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-            <span>Sites</span>
-          </button>
-          <button class="tab" data-tab="pages">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/></svg>
-            <span>Crawled Pages</span>
-          </button>
-          <button class="tab" data-tab="content">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
-            <span>Content</span>
-          </button>
-          <button class="tab" data-tab="links">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 1 0-6-6l-1 1"/><path d="M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 1 0 6 6l1-1"/></svg>
-            <span>Links</span>
-          </button>
-          <button class="tab" data-tab="actions">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6"/></svg>
-            <span>Issues & Actions</span>
-          </button>
-          <button class="tab" data-tab="suggestions">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            <span>Suggestions</span>
-          </button>
-            <button class="tab" data-tab="sandbox-approvals">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6"/></svg>
-              <span>Sandbox Approvals</span>
-            </button>
-            <button class="tab" data-tab="sandbox-comparison" style="display: none;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
-              <span>Sandbox Comparison</span>
-            </button>
-            <button class="tab" data-tab="style-guide" style="display: none;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/><line x1="17.5" y1="15" x2="9" y2="6.5"/></svg>
-              <span>Style Guide</span>
-            </button>
-          
-          <span class="tab-divider" role="separator"></span>
-          <button class="tab" data-tab="register">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            <span>Execution Register</span>
-          </button>
-          <button class="tab" data-tab="report">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M8 12h8M8 16h5"/></svg>
-            <span>Reports</span>
-          </button>
-          <button class="tab" data-tab="seo-insights">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-            <span>SEO Insights</span>
-          </button>
-          <button class="tab" data-tab="competitors">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5"/><circle cx="16.5" cy="9" r="2.6"/><path d="M15.5 14.6c2.4.2 4.3 1.5 4.9 3.9"/></svg>
-            <span>Competitors</span>
-          </button>
-          <button class="tab" data-tab="quality">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
-            <span>Quality</span>
-          </button>
-          <span class="tab-divider" role="separator"></span>
-          <button class="tab" data-tab="schedules">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg>
-            <span>Schedules</span>
-          </button>
-          <button class="tab" data-tab="logs">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M10.3 21a2 2 0 0 0 3.4 0"/></svg>
-            <span>Alerts</span>
-          </button>
-          <button class="tab" data-tab="settings">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5h.1a1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1z"/></svg>
-            <span>Settings</span>
-          </button>
-        </nav>
+        <nav class="rail-section rail-nav" id="rail-nav" aria-label="Quick section navigation"></nav>
+        <section class="rail-section">
+          <h4 class="rail-title">This tab</h4>
+          <p id="rail-explain" class="rail-explain">Pick a section on the right to see what it covers.</p>
+          <div class="rail-tip" id="rail-tip"></div>
+        </section>
       </aside>
 
     <div id="results-section" class="results-section hidden">
@@ -461,19 +355,81 @@
           <h2 id="results-url"></h2>
           <p id="results-status" class="results-status"></p>
         </div>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <button id="new-analysis-btn" class="btn-secondary">New Analysis</button>
-        </div>
+        <button id="new-analysis-btn" class="btn-secondary">New Analysis</button>
       </div>
 
-      <!-- Tabs were moved to the left sidebar -->
-
-
+      <nav class="tabs" id="tabs" aria-label="Dashboard sections">
+        <button class="tab active" data-tab="overview">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v10l-8 4-8-4V7z"/><path d="M12 12l8-5M12 12l-8-5M12 12v9"/></svg>
+          <span>Overview</span>
+        </button>
+        <button class="tab" data-tab="sites">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          <span>Sites</span>
+        </button>
+        <button class="tab" data-tab="pages">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/></svg>
+          <span>Pages</span>
+        </button>
+        <button class="tab" data-tab="content">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+          <span>Content</span>
+        </button>
+        <button class="tab" data-tab="links">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 1 0-6-6l-1 1"/><path d="M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 1 0 6 6l1-1"/></svg>
+          <span>Links</span>
+        </button>
+        <button class="tab" data-tab="actions">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6"/></svg>
+          <span>SEO Actions</span>
+        </button>
+        <button class="tab" data-tab="suggestions">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <span>Suggestions</span>
+        </button>
+        <button class="tab" data-tab="sandbox-approvals">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6"/></svg>
+          <span>Sandbox Approvals</span>
+        </button>
+        <button class="tab" data-tab="sandbox-comparison" style="display: none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+          <span>Sandbox Comparison</span>
+        </button>
+        <span class="tab-divider" role="separator"></span>
+        <button class="tab" data-tab="report">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M8 12h8M8 16h5"/></svg>
+          <span>Report</span>
+        </button>
+        <button class="tab" data-tab="seo-insights">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <span>SEO Insights</span>
+        </button>
+        <button class="tab" data-tab="competitors">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5"/><circle cx="16.5" cy="9" r="2.6"/><path d="M15.5 14.6c2.4.2 4.3 1.5 4.9 3.9"/></svg>
+          <span>Competitors</span>
+        </button>
+        <button class="tab" data-tab="quality">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+          <span>Quality</span>
+        </button>
+        <span class="tab-divider" role="separator"></span>
+        <button class="tab" data-tab="schedules">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg>
+          <span>Schedules</span>
+        </button>
+        <button class="tab" data-tab="logs">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M10.3 21a2 2 0 0 0 3.4 0"/></svg>
+          <span>Alerts</span>
+        </button>
+        <button class="tab" data-tab="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5h.1a1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1z"/></svg>
+          <span>Settings</span>
+        </button>
+      </nav>
 
       <div class="tab-content" id="tab-overview">
         <div class="stats-grid" id="overview-stats"><div class="skeleton skeleton-card skeleton-sm"></div><div class="skeleton skeleton-card skeleton-sm"></div><div class="skeleton skeleton-card skeleton-sm"></div><div class="skeleton skeleton-card skeleton-sm"></div></div>
         <div class="content-breakdown" id="content-breakdown"></div>
-        <div id="overview-evidence" style="margin-top:24px"></div>
         <div class="stats-grid" id="overview-flows" style="margin-top:16px;grid-template-columns:repeat(1,1fr)"></div>
         <div id="overview-exec" style="margin-top:16px"></div>
         <div id="overview-health" style="margin-top:16px"></div>
@@ -500,7 +456,6 @@
       </div>
 
       <div class="tab-content hidden" id="tab-pages">
-        <section id="page-architecture" class="page-architecture" aria-live="polite"></section>
         <div class="table-controls">
           <input type="text" id="pages-search" placeholder="Search pages..." class="search-input">
           <select id="pages-type-filter" class="filter-select"><option value="">All Types</option></select>
@@ -599,6 +554,24 @@
             <button id="check-links-btn" class="btn-secondary" style="font-size:12px;padding:4px 10px">Run Check</button>
           </summary>
         <div id="link-health-summary" class="insights-card"></div>
+        <div class="table-controls-bar" style="margin-top:14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <select id="link-status-filter" class="filter-select" aria-label="Filter links by status">
+              <option value="all">All Link Statuses</option>
+              <option value="broken">Broken (4xx/5xx)</option>
+              <option value="redirect">Redirect (301/302)</option>
+              <option value="blocked">Blocked (401/403)</option>
+              <option value="unreachable">Unreachable</option>
+              <option value="ok">OK (200)</option>
+              <option value="external">External</option>
+              <option value="unchecked">Unchecked</option>
+            </select>
+            <span id="link-filter-count" class="count-label"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button id="link-density-toggle-btn" class="btn-secondary" type="button" style="font-size:12px;padding:4px 10px" title="Toggle table row density">Compact View</button>
+          </div>
+        </div>
         <div id="link-health-issues" class="insights-card"></div>
         <details style="margin-top:10px">
           <summary style="cursor:pointer;font-size:13px;color:var(--text-secondary)">What are redirects and why is the count often 0?</summary>
@@ -625,7 +598,6 @@
               <option value="unreachable">Unreachable</option>
               <option value="__external__">External links</option>
             </select>
-            <button id="export-links-btn" class="btn-secondary" style="font-size:12px;padding:4px 10px;margin-left:8px" onclick="event.stopPropagation()">Export to Excel</button>
           </summary>
           <div id="all-links-card" class="insights-card"></div>
         </details>
@@ -669,26 +641,10 @@
         <p class="section-desc">Send approved changes to GitHub as a pull request, or get an in-repo guide to apply them in your own repository.</p>
         <div class="table-controls" style="margin-bottom:10px">
           <button id="apply-changes-btn" class="btn-primary" style="padding:6px 14px;font-size:13px">Apply via GitHub PR</button>
+          <button id="apply-sandbox-btn" class="btn-primary" style="padding:6px 14px;font-size:13px">Apply to Sandbox</button>
           <span id="apply-changes-status" class="count-label"></span>
         </div>
         <div id="apply-guide-card" class="insights-card" style="display:none"></div>
-      </div>
-
-      <div class="tab-content hidden" id="tab-register">
-        <header class="section-header" style="display: flex; justify-content: space-between; align-items: flex-end;">
-          <div>
-            <h2>SEO Execution Register</h2>
-            <p>Every recurring SEO task, judged by evidence.</p>
-          </div>
-          <div class="report-actions" style="display: flex; gap: 8px;">
-            <a id="btn-cadence-weekly" class="btn-secondary" target="_blank">Weekly Pulse</a>
-            <a id="btn-cadence-monthly" class="btn-primary" target="_blank">Monthly Report</a>
-            <a id="btn-cadence-quarterly" class="btn-secondary" target="_blank">Quarterly Review</a>
-          </div>
-        </header>
-        <div id="register-container" class="settings-grid" style="margin-top:20px; max-width: 1000px; display: grid; gap: 20px;">
-          <!-- Content injected by JS -->
-        </div>
       </div>
 
       <div class="tab-content hidden" id="tab-report">
@@ -856,7 +812,6 @@
       </div>
 
       <div class="tab-content hidden" id="tab-settings">
-
         <div class="logs-section">
           <h3>Google Search Console</h3>
           <p class="section-desc">Set up Google OAuth credentials so any user can connect their own Search Console property. Create a Google Cloud OAuth client (Web application), enable the Search Console API, and add your callback redirect URI to its authorized redirects. These credentials are stored in the app database — end users never see them.</p>
@@ -970,6 +925,88 @@
         </div>
       </div>
 
+      <div class="tab-content hidden" id="tab-sandbox-approvals">
+        <div class="section-header">
+          <h2>Sandbox Approvals</h2>
+          <p class="section-desc">Review and approve suggestions for the auto-apply sandbox. Approved items will be queued for applying.</p>
+          <button class="nav-btn" onclick="switchTab('sandbox-approvals')">Sandbox Approvals</button>
+          <button class="nav-btn" onclick="switchTab('sandbox-comparison')">Sandbox Comparison</button>
+        </div>
+        <div id="sandbox-approvals-queue" style="display:flex;flex-direction:column;gap:16px;"></div>
+      </div>
+
+      <div class="tab-content hidden" id="tab-sandbox-comparison">
+        <div class="section-header">
+          <h2>Page-level Comparison View</h2>
+          <p class="section-desc">Baseline vs. Current Post-Apply Snapshot of the Sandbox</p>
+        </div>
+        
+        <div id="sandbox-comparison-loading" class="empty-state">Loading comparison...</div>
+        <div id="sandbox-comparison-error" class="error-card hidden" style="background:#fee2e2;color:#991b1b;padding:12px;border-radius:6px;margin-bottom:16px;"></div>
+        
+        <div id="sandbox-comparison-content" class="hidden">
+          <div style="display: flex; gap: 24px; margin-bottom: 24px;">
+            <div style="flex: 2; background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
+              <h3 style="margin-top:0;margin-bottom:16px;font-size:16px;">SEO Score Impact</h3>
+              <div style="display:flex; align-items:center; gap: 16px;">
+                <div style="text-align:center;">
+                  <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase;">Baseline Score</div>
+                  <div id="comp-score-old" style="font-size:28px; font-weight:bold; color:var(--text-primary);">--</div>
+                </div>
+                <div style="font-size:24px; color:var(--text-muted);">→</div>
+                <div style="text-align:center;">
+                  <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase;">Current Score</div>
+                  <div id="comp-score-new" style="font-size:28px; font-weight:bold; color:var(--text-primary);">--</div>
+                </div>
+                <div id="comp-score-delta" style="margin-left:auto; font-size:20px; font-weight:bold; padding: 6px 12px; border-radius: 20px;"></div>
+              </div>
+            </div>
+          </div>
+          
+          <h3 style="margin-bottom: 12px; font-size: 16px;">Field-by-Field Analysis</h3>
+          <div style="background: white; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
+            <table style="width: 100%; text-align: left; border-collapse: collapse;">
+              <thead>
+                <tr style="background: var(--bg-surface); border-bottom: 1px solid var(--border-color);">
+                  <th style="padding: 12px 16px; font-weight: 500;">Field</th>
+                  <th style="padding: 12px 16px; font-weight: 500;">Baseline Value</th>
+                  <th style="padding: 12px 16px; font-weight: 500;">Current Value</th>
+                  <th style="padding: 12px 16px; font-weight: 500; width: 100px;">Status</th>
+                </tr>
+              </thead>
+              <tbody id="comp-fields-tbody">
+              </tbody>
+            </table>
+          </div>
+          
+          <div style="display: flex; gap: 24px; margin-bottom: 24px;">
+            <div style="flex: 1;">
+              <h3 style="margin-bottom: 12px; font-size: 16px;">Visual Comparison</h3>
+              <div style="display: flex; gap: 16px; overflow-x: auto; padding-bottom: 16px;">
+                <div style="flex: 1; min-width: 300px;">
+                  <div style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">Baseline (Phase 2)</div>
+                  <div style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; max-height: 400px; overflow-y: auto;">
+                    <img id="comp-img-baseline" src="" alt="Baseline" style="width: 100%; display: block;" />
+                  </div>
+                </div>
+                <div style="flex: 1; min-width: 300px;">
+                  <div style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">Current Post-Apply</div>
+                  <div style="border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; max-height: 400px; overflow-y: auto;">
+                    <img id="comp-img-current" src="" alt="Current" style="width: 100%; display: block;" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div style="width: 320px; flex-shrink: 0;">
+              <h3 style="margin-bottom: 12px; font-size: 16px;">Raw History Trail</h3>
+              <div id="comp-raw-history" style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px; max-height: 500px; overflow-y: auto;">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="tab-content hidden" id="tab-style-guide">
         <div class="style-guide-container">
           <div class="style-guide-header">
@@ -1009,7 +1046,7 @@
                 <div class="swatch-sub">--accent-glow</div>
               </div>
               <div class="swatch-card">
-                <div class="swatch-preview" style="background:var(--text)"></div>
+                <div class="swatch-preview" style="background:var(--text-primary)"></div>
                 <div class="swatch-title">Primary Text</div>
                 <div class="swatch-sub">--text-primary</div>
               </div>
@@ -1180,6 +1217,7 @@
           </div>
         </div>
       </div>
+    </div>
 
       <aside class="rail right-rail" id="right-rail" aria-label="Live activity, assistant and quick links">
         <section class="rail-section">
@@ -1223,10 +1261,28 @@
           </div>
         </section>
       </aside>
-
-    </div>
     </div>
   </main>
+</div>
+
+<div id="chat-widget" class="chat-widget">
+  <button id="chat-toggle" class="chat-toggle">💬 Chat</button>
+  <div id="chat-panel" class="chat-panel hidden">
+    <div class="chat-panel-header">
+      <span class="chat-panel-title">💬 AI Assistant</span>
+      <span id="chat-context-hint" class="chat-context-hint"></span>
+      <button id="chat-close" class="chat-close" title="Close">✕</button>
+    </div>
+    <div class="chat-box" id="chat-box">
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-message bot">Hi! I'm the ZuiGO Engine assistant. Ask me anything about SEO, or open an analyzed site and ask about any part of it — I'll answer using the whole analysis.</div>
+      </div>
+      <form id="chat-form" class="chat-input-group">
+        <input type="text" id="chat-input" placeholder="Ask me anything about SEO..." disabled>
+        <button type="submit" id="chat-send" disabled>Send</button>
+      </form>
+    </div>
+  </div>
 </div>
 
 <div id="modal-overlay" class="modal-overlay hidden">
@@ -1240,6 +1296,7 @@
 </div>
 
 <div id="toast" class="toast hidden"></div>
-<script src="/static/app.js?v=2"></script>
+
+<script src="/static/app.js"></script>
 </body>
 </html>
