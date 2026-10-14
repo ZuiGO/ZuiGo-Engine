@@ -8,11 +8,7 @@ import json
 
 import pytest
 
-from backend.services.ai_visibility import (
-    _agent_status,
-    _ld_types,
-    _parse_robots,
-)
+from backend.services.ai_visibility import _ld_types
 from backend.services.local_seo import (
     _extract_nap,
     _find_key,
@@ -88,35 +84,6 @@ class TestSitemapEntries:
         entries = await _fetch_sitemap_entries(index)
         assert [e["loc"] for e in entries] == ["https://x.example/a", "https://x.example/b"]
         assert called["n"] == 2
-
-
-class TestAIRobotsParsing:
-    def test_exact_block_is_blocked(self):
-        assert _agent_status(["/"]) == "blocked"
-        assert _agent_status(["/*"]) == "blocked"
-        assert _agent_status(["/?"]) == "blocked"
-
-    def test_partial_rule_is_not_full_block(self):
-        assert _agent_status(["/wp-admin/"]) == "partial"
-        assert _agent_status(["/wp-json/"]) == "partial"
-
-    def test_no_rules_allowed(self):
-        assert _agent_status([]) == "allowed"
-
-    def test_parse_robots_section(self):
-        rules = _parse_robots(
-            "User-agent: *\nDisallow: /wp-admin/\n\n"
-            "User-agent: GPTBot\nDisallow: /\nCrawl-delay: 5\n\n"
-            "User-agent: Google-Extended\nDisallow: /private\n"
-        )
-        assert rules["*"]["disallow"] == ["/wp-admin/"]
-        assert rules["gptbot"]["disallow"] == ["/"]
-        assert rules["gptbot"]["delay"] == 5.0
-        assert rules["google-extended"]["disallow"] == ["/private"]
-
-    def test_crawl_delay_non_numeric_ignored(self):
-        rules = _parse_robots("User-agent: GPTBot\nCrawl-delay: banana\n")
-        assert rules["gptbot"]["delay"] is None
 
 
 class TestStructuredDataCounting:

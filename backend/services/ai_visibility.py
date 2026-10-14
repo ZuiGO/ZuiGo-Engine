@@ -14,96 +14,23 @@ from bs4 import BeautifulSoup
 from backend.db.mongo import get_db
 from backend.logging_setup import get_logger
 from backend.services.content_signals import compute_page_signals
+from backend.services.robots_rules import AI_CRAWLERS, ANSWER_ENGINE_PURPOSES, parse_robots
+from backend.services.structured_data import detect_structured_data
 
 logger = get_logger("ai_visibility")
 
-AI_AGENTS = [
-    "gptbot",
-    "claudebot",
-    "anthropic-ai",
-    "perplexitybot",
-    "google-extended",
-    "chatgpt-user",
-    "ccbot",
-    "bingbot",
-]
-
-TRAINING_ONLY_AGENTS = {"ccbot"}
+# Reference list shared with geo_readiness (see robots_rules.AI_CRAWLERS).
+AI_AGENTS = [name.lower() for name, _, _ in AI_CRAWLERS]
+TRAINING_ONLY_AGENTS = {name.lower() for name, _, purpose in AI_CRAWLERS if purpose == "training"}
+ANSWER_ENGINE_AGENTS = {name.lower() for name, _, purpose in AI_CRAWLERS if purpose in ANSWER_ENGINE_PURPOSES}
 ANSWER_BLOCK_WORDS = (40, 60)
 DEFINITION_BLOCK_WORDS = (30, 80)
 FRESHNESS_DAYS = 183
 MAX_SCAN_PAGES = 50
 
-LDJSON_RE = re.compile(
-    r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
-    re.S | re.I,
-)
-ATYPE_RE = re.compile(r'["\']@type["\']\s*:\s*(\[[^\]]*\]|"[^"]*"|\'[^\']*\')')
-
-
-def _extract_types(block: str) -> set[str]:
-    """Pull @type values out of one JSON-LD block (handles plain + arrays)."""
-    out: set[str] = set()
-    for m in ATYPE_RE.finditer(block):
-        val = m.group(1).strip()
-        if val.startswith("["):
-            for part in val.strip("[]").split(","):
-                t = part.strip().strip("'\"").strip()
-                if t:
-                    out.add(t.lower())
-        elif val[:1] in ("'", '"') and len(val) > 1:
-            out.add(val.strip("'\"").strip().lower())
-    return out
-
-
 def _ld_types(html: str) -> set[str]:
-    types: set[str] = set()
-    for m in LDJSON_RE.finditer(html or ""):
-        types.update(_extract_types(m.group(1)))
-    return types
-
-
-def _parse_robots(text: str) -> dict[str, dict]:
-    """Section-aware robots.txt parse -> {agent(lower): {disallow, allow, delay}}."""
-    rules: dict[str, dict] = {}
-    current: list[str] = []
-    for raw in (text or "").splitlines():
-        line = raw.strip()
-        low = line.lower()
-        if not low or low.startswith("#"):
-            continue
-        if low.startswith("user-agent:"):
-            current = [a.strip().lower() for a in low[len("user-agent:"):].split(",") if a.strip()]
-            for a in current:
-                rules.setdefault(a, {"disallow": [], "allow": [], "delay": None})
-        elif current:
-            if low.startswith("disallow:"):
-                val = low[len("disallow:"):].strip()
-                if val:
-                    for a in current:
-                        rules[a]["disallow"].append(val)
-            elif low.startswith("allow:"):
-                val = line[len("allow:"):].strip()
-                if val:
-                    for a in current:
-                        rules[a]["allow"].append(val)
-            elif low.startswith("crawl-delay:"):
-                try:
-                    dv = float(low[len("crawl-delay:"):].strip())
-                except ValueError:
-                    dv = None
-                if dv:
-                    for a in current:
-                        rules[a]["delay"] = dv
-    return rules
-
-
-def _agent_status(disallow: list[str]) -> str:
-    if any(r in ("/", "/*", "/?") for r in disallow):
-        return "blocked"
-    if disallow:
-        return "partial"
-    return "allowed"
+    """Lower-cased structured-data types (JSON-LD, Microdata, RDFa) found in a page."""
+    return {t.lower() for t in detect_structured_data(html or "")["types"]}
 
 
 def _word_count(text: str) -> int:
@@ -212,29 +139,39 @@ async def _fetch_plain(url: str, user_agent: str, auth: tuple[str, str] | None =
 
 async def check_ai_visibility(job_id: str, target_url: str, http_username: str | None = None, http_password: str | None = None) -> dict:
     db = get_db()
-    domain = target_url.split("//")[-1].split("/")[0]
+    from urllib.parse import urlparse as _urlparse
+
+    _u = _urlparse(target_url if "//" in target_url else "https://" + target_url)
+    domain = _u.netloc
+    origin = f"{_u.scheme or 'https'}://{domain}"
     auth = (http_username, http_password) if http_username and http_password else None
-    robots_txt, robots_status = await _fetch_plain("https://" + domain + "/robots.txt", "ZuiGO-Engine/1.0 ai-visibility", auth=auth)
+    robots_txt, robots_status = await _fetch_plain(origin + "/robots.txt", "ZuiGO-Engine/1.0 ai-visibility", auth=auth)
 
-    robots_rules = _parse_robots(robots_txt)
+    # RFC 9309: a missing (4xx) robots.txt means no restrictions; a 5xx / failed fetch means we cannot tell.
+    robots_measured = robots_txt is not None or (robots_status is not None and 400 <= robots_status < 500)
+    rules = parse_robots(robots_txt)
     agent_rows = []
-    for agent in AI_AGENTS:
-        rules = robots_rules.get(agent) or robots_rules.get("*") or {"disallow": [], "allow": [], "delay": None}
+    for name, org, purpose in AI_CRAWLERS:
+        d = rules.check(name, "/")
         agent_rows.append({
-            "agent": agent,
-            "status": _agent_status(rules["disallow"]),
-            "disallow_rules": len(rules["disallow"]),
-            "allow_rules": len(rules["allow"]),
-            "crawl_delay": rules["delay"],
-            "sample_rules": rules["disallow"][:4],
+            "agent": name.lower(),
+            "org": org,
+            "purpose": purpose,
+            "status": "blocked" if not d.allowed else ("partial" if d.restricted_patterns else "allowed"),
+            "rule": d.rule,
+            "group": d.group,
+            "disallow_rules": len(d.restricted_patterns),
+            "sample_rules": d.restricted_patterns[:4],
         })
-    blocked_agents = [r["agent"] for r in agent_rows if r["status"] == "blocked"]
+    # Only answer-engine crawlers count as a "block" problem; blocking training-only crawlers is a policy choice.
+    blocked_agents = [r["agent"] for r in agent_rows if r["status"] == "blocked" and r["agent"] in ANSWER_ENGINE_AGENTS]
     allowed_agents = [r["agent"] for r in agent_rows if r["status"] != "blocked"]
-    blocked_training_agents = [
-        r["agent"] for r in agent_rows if r["agent"] in TRAINING_ONLY_AGENTS and r["status"] == "blocked"
-    ]
+    blocked_training_agents = [r["agent"] for r in agent_rows if r["agent"] in TRAINING_ONLY_AGENTS and r["status"] == "blocked"]
+    answer_rows = [r for r in agent_rows if r["agent"] in ANSWER_ENGINE_AGENTS]
+    crawl_access_pct = round(100 * sum(1 for r in answer_rows if r["status"] != "blocked") / len(answer_rows)) if robots_measured else None
 
-    pages = await db.pages.find({"job_id": job_id}, {"html": 1, "url": 1}).to_list(length=None)
+    pages = await db.pages.find({"job_id": job_id}, {"html": 1, "url": 1, "status_code": 1}).to_list(length=None)
+    pages = [p for p in pages if (p.get("status_code") or 200) < 400]  # error pages carry no content signals
     with_structured = 0
     extractable_plain = 0
     schema_counter: Counter[str] = Counter()
@@ -260,10 +197,10 @@ async def check_ai_visibility(job_id: str, target_url: str, http_username: str |
                     ai_ext[key + "_pages"] += 1
             scanned += 1
 
-    llms_txt, llms_status = await _fetch_plain("https://" + domain + "/llms.txt", "ZuiGO-Engine/1.0 ai-visibility", auth=auth)
-    pricing_md, pricing_md_status = await _fetch_plain("https://" + domain + "/pricing.md", "ZuiGO-Engine/1.0 ai-visibility", auth=auth)
-    pricing_txt, pricing_txt_status = await _fetch_plain("https://" + domain + "/pricing.txt", "ZuiGO-Engine/1.0 ai-visibility", auth=auth)
-    okf_html, okf_status = await _fetch_plain("https://" + domain + "/okf/", "ZuiGO-Engine/1.0 ai-visibility", auth=auth)
+    llms_txt, llms_status = await _fetch_plain(origin + "/llms.txt", "ZuiGO-Engine/1.0 ai-visibility", auth=auth)
+    pricing_md, pricing_md_status = await _fetch_plain(origin + "/pricing.md", "ZuiGO-Engine/1.0 ai-visibility", auth=auth)
+    pricing_txt, pricing_txt_status = await _fetch_plain(origin + "/pricing.txt", "ZuiGO-Engine/1.0 ai-visibility", auth=auth)
+    okf_html, okf_status = await _fetch_plain(origin + "/okf/", "ZuiGO-Engine/1.0 ai-visibility", auth=auth)
     okf_present = okf_html is not None and len(okf_html.strip()) > 0
 
     total = max(len(pages), 1)
@@ -273,8 +210,8 @@ async def check_ai_visibility(job_id: str, target_url: str, http_username: str |
         sitemap_ok = True
     else:
         from backend.services.sitemap import _robots_sitemap_urls, _fetch, _parse_sitemap_urls
-        candidates = await _robots_sitemap_urls("https://" + domain, auth=auth)
-        candidates.append("https://" + domain + "/sitemap.xml")
+        candidates = await _robots_sitemap_urls(origin, auth=auth)
+        candidates.append(origin + "/sitemap.xml")
         for cand in candidates:
             text = await _fetch(cand, auth=auth)
             if text:
@@ -283,15 +220,20 @@ async def check_ai_visibility(job_id: str, target_url: str, http_username: str |
                     sitemap_ok = True
                     break
 
+    has_pages = len(pages) > 0
     struct_ratio = with_structured / total
     extract_ratio = extractable_plain / total
+    # Each component is a measured 0-100 value (or None when it could not be measured).
+    # The score is their unweighted mean: no invented weights, no pass/fail cut-offs,
+    # and unmeasured components are left out instead of being scored as 0 or 100.
     subscores = {
-        "sitemap": 25 if sitemap_ok else 0,
-        "llms_txt": 25 if llms_txt else 0,
-        "structured_data": 25 if struct_ratio >= 0.5 else 0,
-        "extractable_content": 25 if extract_ratio >= 0.5 else 0,
+        "crawl_access": crawl_access_pct,
+        "sitemap": 100 if sitemap_ok else 0,
+        "structured_data": round(100 * struct_ratio) if has_pages else None,
+        "extractable_content": round(100 * extract_ratio) if has_pages else None,
     }
-    score = sum(subscores.values())
+    measured = [v for v in subscores.values() if v is not None]
+    score = round(sum(measured) / len(measured)) if measured else None
 
     checks = [
         {
@@ -305,7 +247,7 @@ async def check_ai_visibility(job_id: str, target_url: str, http_username: str |
         },
         {
             "passed": llms_txt is not None,
-            "label": "The site publishes an llms.txt file",
+            "label": "The site publishes an llms.txt file (informational, not scored)",
             "detail": "llms.txt lists pages for LLM consumers."
                       if llms_txt else "Add an llms.txt file at /llms.txt so LLM products can cite the pages.",
         },
@@ -330,7 +272,7 @@ async def check_ai_visibility(job_id: str, target_url: str, http_username: str |
     scanned_ratio = scanned / total if scanned else 0
     pricing_ratio = (ai_ext["author_pages"] / scanned) if scanned else 0
     fresh_ratio = (ai_ext["fresh_pages"] / scanned) if scanned else 0
-    answer_ratio = (ai_ext["answer_blocks_pages"] / scanned) if scanned else 0
+    answer_ratio = (ai_ext["answer_block_pages"] / scanned) if scanned else 0
 
     checks.extend([
         {
@@ -348,7 +290,7 @@ async def check_ai_visibility(job_id: str, target_url: str, http_username: str |
             "passed": answer_ratio >= 0.3,
             "label": "Answer blocks (40-60 word passages) on content pages",
             "detail": (
-                f"{ai_ext['answer_blocks_pages']} of {scanned} scanned pages contain self-contained answer blocks."
+                f"{ai_ext['answer_block_pages']} of {scanned} scanned pages contain self-contained answer blocks."
                 if scanned
                 else "No content pages scanned."
             ),
@@ -388,6 +330,7 @@ async def check_ai_visibility(job_id: str, target_url: str, http_username: str |
         "url": target_url,
         "score": score,
         "subscores": subscores,
+        "score_basis": "unweighted mean of the measured components in subscores (each 0-100)",
         "checks": checks,
         "robots_txt_found": robots_txt is not None,
         "robots_status": robots_status,
@@ -396,6 +339,7 @@ async def check_ai_visibility(job_id: str, target_url: str, http_username: str |
         "allowed_ai_agents": allowed_agents,
         "blocked_training_agents": blocked_training_agents,
         "ai_agents_scanned": AI_AGENTS,
+        "answer_engine_agents": sorted(ANSWER_ENGINE_AGENTS),
         "llms_txt_present": llms_txt is not None,
         "llms_txt_status": llms_status,
         "pricing_md_present": pricing_md is not None,
@@ -409,12 +353,12 @@ async def check_ai_visibility(job_id: str, target_url: str, http_username: str |
         "scanned_pages": scanned,
         "answer_block_pages": ai_ext["answer_block_pages"],
         "definition_first_pages": ai_ext["definition_first_pages"],
-        "faq_heading_pages": ai_ext["faq_headings_pages"],
-        "comparison_table_pages": ai_ext["comparison_tables_pages"],
+        "faq_heading_pages": ai_ext["faq_heading_pages"],
+        "comparison_table_pages": ai_ext["comparison_table_pages"],
         "stat_cited_pages": ai_ext["stat_cited_pages"],
         "author_pages": ai_ext["author_pages"],
         "fresh_pages": ai_ext["fresh_pages"],
-        "semantic_landmark_pages": ai_ext["landmarks_pages"],
+        "semantic_landmark_pages": ai_ext["semantic_landmark_pages"],
         "schema_types": dict(schema_counter.most_common(10)),
         "total_pages": len(pages),
         "sitemap_valid": sitemap_ok,

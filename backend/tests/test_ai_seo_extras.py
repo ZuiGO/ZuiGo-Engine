@@ -8,7 +8,6 @@ from backend.services.ai_visibility import (
     _ai_extractability,
     _is_fresh,
     _parse_date,
-    _parse_robots,
     _word_count,
 )
 from backend.services import ai_visibility as ai_mod, exec_summary, chat_service

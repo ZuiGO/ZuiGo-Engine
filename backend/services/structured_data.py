@@ -14,25 +14,78 @@ SUPPORTED_TYPES = {
     "BreadcrumbList": ["itemListElement"],
 }
 
-_RE_JSON_LD = re.compile(r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>', re.IGNORECASE | re.DOTALL)
+def _flatten_ld(data) -> list[dict]:
+    """Top-level JSON-LD nodes, with ``@graph`` members promoted to nodes."""
+    out: list[dict] = []
+    if isinstance(data, list):
+        for item in data:
+            out.extend(_flatten_ld(item))
+    elif isinstance(data, dict):
+        graph = data.get("@graph")
+        if isinstance(graph, (list, dict)):
+            out.extend(_flatten_ld(graph))
+        if data.get("@type") or not graph:
+            out.append(data)
+    return out
 
-def _json_ld_objects(html: str) -> list[dict]:
-    if not html:
-        return []
-    out = []
-    for match in _RE_JSON_LD.finditer(html):
-        raw = match.group(1).strip()
+
+def _soup(html: str):
+    from bs4 import BeautifulSoup
+
+    return BeautifulSoup(html or "", "lxml")
+
+
+def detect_structured_data(html_or_soup) -> dict:
+    """Detect JSON-LD, Microdata and RDFa. JSON-LD is parsed, not regex-matched.
+
+    Returns {"formats": [...], "nodes": [JSON-LD node dicts], "jsonld_valid": int,
+    "jsonld_invalid": int, "types": [type names]} - everything measured from the markup.
+    """
+    soup = html_or_soup if hasattr(html_or_soup, "find_all") else _soup(html_or_soup)
+    formats: list[str] = []
+    nodes: list[dict] = []
+    valid = invalid = 0
+    for tag in soup.find_all("script", attrs={"type": re.compile(r"^application/ld\+json$", re.I)}):
+        raw = (tag.string or tag.get_text() or "").strip()
         if not raw:
             continue
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
+            invalid += 1
             continue
-        if isinstance(data, list):
-            out.extend(data)
-        else:
-            out.append(data)
-    return out
+        found = _flatten_ld(data)
+        if found:
+            valid += 1
+            nodes.extend(found)
+    types: list[str] = []
+    for node in nodes:
+        for t in _type_names(node):
+            if t not in types:
+                types.append(t)
+    if valid:
+        formats.append("json-ld")
+    micro = [el.get("itemtype") for el in soup.find_all(attrs={"itemscope": True, "itemtype": True})]
+    if micro:
+        formats.append("microdata")
+        for it in micro:
+            name = (it or "").rstrip("/").rsplit("/", 1)[-1]
+            if name and name not in types:
+                types.append(name)
+    rdfa = [el.get("typeof") for el in soup.find_all(attrs={"typeof": True})]
+    if rdfa:
+        formats.append("rdfa")
+        for tv in rdfa:
+            for name in (tv or "").split():
+                name = name.split(":")[-1]
+                if name and name not in types:
+                    types.append(name)
+    return {"formats": formats, "nodes": nodes, "jsonld_valid": valid, "jsonld_invalid": invalid, "types": types}
+
+
+def _json_ld_objects(html: str) -> list[dict]:
+    """JSON-LD nodes of a document (kept for callers/tests of the old helper)."""
+    return detect_structured_data(html)["nodes"]
 
 
 def _type_names(node: dict) -> list[str]:
@@ -44,11 +97,7 @@ def _type_names(node: dict) -> list[str]:
 
 def _has_required(obj: dict, type_name: str) -> list[str]:
     required = SUPPORTED_TYPES.get(type_name, [])
-    missing = []
-    for field in required:
-        if field not in obj:
-            missing.append(field)
-    return missing
+    return [f for f in required if f not in obj]
 
 
 def validate_structured_data(page_url: str, html: str) -> dict:
@@ -58,15 +107,20 @@ def validate_structured_data(page_url: str, html: str) -> dict:
         "invalid_types": [],
         "missing_required": {},
         "has_structured_data": False,
+        "formats": [],
+        "jsonld_parse_errors": 0,
         "valid": False,
     }
-    objects = _json_ld_objects(html)
-    if not objects:
+    det = detect_structured_data(html)
+    report["formats"] = det["formats"]
+    report["jsonld_parse_errors"] = det["jsonld_invalid"]
+    if not det["formats"]:
         return report
     report["has_structured_data"] = True
     seen = set()
     valid_types = set()
-    for obj in objects:
+    # Required-field validation only applies to JSON-LD nodes (the only format parsed into fields).
+    for obj in det["nodes"]:
         for t in _type_names(obj):
             if t in seen:
                 continue
@@ -81,13 +135,17 @@ def validate_structured_data(page_url: str, html: str) -> dict:
                     valid_types.add(t)
             elif t in ("FAQPage", "FAQPageQuestion"):
                 report["types_present"].append(f"{t} (deprecated - ignored)")
+    for t in det["types"]:  # microdata / RDFa types: present, not field-validated
+        if t not in report["types_present"] and t not in seen:
+            report["types_present"].append(t)
     report["valid"] = bool(valid_types) and not report["invalid_types"]
     return report
 
 
 async def audit_structured_data(job_id: str) -> dict:
     db = get_db()
-    pages = await db.pages.find({"job_id": job_id}, {"html": 1, "url": 1}).to_list(length=None)
+    pages = await db.pages.find({"job_id": job_id}, {"html": 1, "url": 1, "status_code": 1}).to_list(length=None)
+    pages = [p for p in pages if (p.get("status_code") or 200) < 400]  # error pages have no content to audit
     if not pages:
         return {"status": "error", "message": "No pages for this job"}
 
