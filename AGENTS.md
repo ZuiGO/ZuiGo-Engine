@@ -1,8 +1,45 @@
 # RankEngine — Agent Context & Session State
 
 This file is the durable memory for AI coding sessions. READ THIS FIRST at the
-start of every session and resume from "Next up". Update it at the end of
-every session with what changed and what's left.
+start of every session. Update it at the end of every session with what changed
+and what's left.
+
+## Current state & guardrails (verified 2026-10-14 — trust this over the log below)
+
+The long "Status" log and "Next up" list further down are HISTORICAL (last real
+entry 2026-08-13). They mention things that no longer exist, so check any item
+against the code before acting on it. Do not "resume" work from them blindly.
+
+**Removed on purpose (do not recreate):** the sandbox connector layer
+(`services/connectors/*`, `git_static_connector`, wordpress/replica connectors),
+staging/replica flows, the old agent-swarm framework, `deploy/demo/` (merged into
+the root `docker-compose.yml`), and `POST /api/actions/{job}/apply-sandbox`
+(now 410). Approved changes ship as a GitHub PR (`create_github_pr`, needs
+`GITHUB_TOKEN`) via `/api/actions/{job}/apply` or `/api/sandbox/suggestions/{id}/apply`.
+
+**Agents:** `services/agent_runtime.py` is the loop (budget, checkpoints, loop
+guards); `agent_planner.decide()` picks the next tool; `agent_tools/` holds the
+registry (`ToolSpec` objects — use attributes, not `spec["..."]`);
+`agent_swarm/` = domain agents that are `AgentRuntime` + role prompt + tool
+allow-list. Runs are executed by `build_agent_for_run()` (API and arq worker).
+
+**Rules for AI sessions (each one exists because it went wrong):**
+1. Run `.venv/bin/python -m pytest backend/tests -q` before every commit; it must
+   be fully green. `test_import_integrity.py` fails on any dangling import,
+   including lazy imports inside functions — never delete or rename a module/
+   function without `git grep`-ing every reference first.
+2. Pipeline stages swallow exceptions (`_stage(..., fallback=...)`), so a broken
+   stage looks like "no data". After touching a stage, run it, don't just import it.
+3. Most tests run with no `GROQ_API_KEY`, i.e. the deterministic fallback path.
+   Anything on the LLM path (planner, groq_client, analysis stages) needs a test
+   that patches a key and a fake client.
+4. Do not swap a parser/library for regexes "for performance" (this silently
+   dropped `<picture>`, `<video>`, `<object>` and width/height from the content
+   classifier). If you must, keep the existing tests passing.
+5. Never commit `.env*`, `*.log`, `seed/`, or keys. Do not log request URLs or
+   query strings (API keys travel there); `logging_setup` redacts as a backstop.
+6. Keep this file honest: when you delete or add a subsystem, edit the section
+   above in the same commit.
 
 ## Project
 SEO analysis engine: crawl a site, classify content, analyze, recommend,
@@ -10,7 +47,7 @@ approve changes, generate dummy site + reports, chat. Python 3.14 FastAPI +
 MongoDB + Redis + Chroma + Arq worker + Playwright. Repo:
 `/Users/macbook/RankEngine-AI-Simple` (git, remote `https://github.com/ZuiGO/rankengine-seo.git`).
 
-## Status (last update: Phase 5 Sandbox Comparison View 2026-08-13; git_static_connector tests fixed; node --check clean; pushed `22f1753`)
+## Status — HISTORICAL LOG (last update: Phase 5 Sandbox Comparison View 2026-08-13; git_static_connector tests fixed; node --check clean; pushed `22f1753`)
 - AGENT RUNTIME ROUND (pushed as one commit, see git log; services restarted via launchd):
   - Autonomous SEO agent: `POST /api/agent/runs` (backend/routes/agent.py, models/agent_schemas.py) with
     goal/scope/urls/budget_credits/max_steps/checkpoint_policy; arq task `agent_run` (worker.py) runs
@@ -1267,7 +1304,7 @@ curl -s localhost:8001/api/health
 #   rg 'Stage .* ok' /tmp/arq.log
 ```
 
-## Next up (candidate work, NOT started)
+## Next up (historical candidate list — verify each item against the code first)
 - Configure real Gmail SMTP in Settings → Email (app `app_settings` key `smtp`):
   host smtp.gmail.com, port 587, app password, use_tls true; then verify test-send +
   report-email end-to-end (both endpoints now surface real failure reasons).
