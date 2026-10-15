@@ -42,21 +42,19 @@ async def audit_content_freshness(job_id: str) -> dict:
     # Sort decayed pages, oldest first
     decayed_pages.sort(key=lambda x: x["last_modified"])
     
-    score = 100
-    if total_tracked > 0:
-        decay_ratio = len(decayed_pages) / total_tracked
-        if decay_ratio > 0.5:
-            score -= 40
-        elif decay_ratio > 0.2:
-            score -= 20
-            
+    # Measured share of dated pages modified within the last 180 days. Pages with no usable date are
+    # not scored (and no date at all means no score, not a perfect one).
+    dated = fresh_pages + len(decayed_pages)
+    score = round(100 * fresh_pages / dated) if dated else None
+
     summary = {
         "status": "audited",
         "total_pages_with_dates": total_tracked,
         "fresh_pages": fresh_pages,
         "decayed_pages_count": len(decayed_pages),
         "decayed_pages": decayed_pages[:50], # Keep top 50 oldest
-        "score": max(0, score)
+        "score": score,
+        "basis": "share of pages whose Last-Modified date is within 180 days; only as truthful as the site's Last-Modified headers",
     }
 
     await db.content_freshness.update_one(

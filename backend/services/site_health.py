@@ -355,7 +355,7 @@ async def compute_site_health(job_id: str) -> dict:
         metrics["image_opt_score"] = img.get("score")
         metrics["images_total"] = img.get("total_images") or metrics.get("images_total")
         metrics["image_occurrences"] = img.get("image_occurrences") or metrics.get("images_total")
-        if img.get("score", 100) < 60:
+        if img.get("score") is not None and img["score"] < 60:
             issues.append({"severity": "low", "message": f"Image optimization weak ({img.get('score')}/100): modern formats and dimensions affect CWV/LCP."})
 
     result = compute_score(metrics)

@@ -48,20 +48,20 @@ async def audit_catalogue(job_id: str) -> dict:
     # We can query the content_items or just rely on the structured_data audit.
     # For a high-level catalogue summary, we count the PDPs vs PLPs.
 
-    score = 100
-    if faceted_urls:
-        # High number of faceted URLs relative to clean PLPs indicates a potential crawl trap
-        clean_plps = len(plps) - len(faceted_urls)
-        if clean_plps > 0 and (len(faceted_urls) / clean_plps) > 2.0:
-            score -= 30 # Penalty for excessive faceted URLs crawled
+    # Measured: share of crawled category (PLP) URLs without query parameters.
+    clean_plps = len(plps) - len(faceted_urls)
+    score = round(100 * clean_plps / len(plps)) if plps else None
+    # Policy: more than FACET_TRAP_RATIO parameterised URLs per clean category page suggests a crawl trap.
+    FACET_TRAP_RATIO = 2.0
+    crawl_trap = clean_plps > 0 and (len(faceted_urls) / clean_plps) > FACET_TRAP_RATIO
 
     summary = {
         "status": "audited",
         "total_plps": len(plps),
         "total_pdps": len(pdps),
         "faceted_urls_crawled": len(faceted_urls),
-        "potential_crawl_trap": score < 100,
-        "score": max(0, score)
+        "potential_crawl_trap": crawl_trap,
+        "score": score,
     }
 
     await db.catalogue_audits.update_one(

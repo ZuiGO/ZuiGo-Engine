@@ -1004,14 +1004,14 @@ async function loadSiteHealth(jobId) {
     const issues = h.issues || [];
     const gradeColor = { A: "#16a34a", B: "#84cc16", C: "#d97706", D: "#dc2626", F: "#b91c1c" }[h.grade] || "#6b7280";
     el.innerHTML = `
-      <h3>Site Health <span class="count-label">(grade ${h.grade}, ${h.score}/100)</span></h3>
+      <h3>Site Health <span class="count-label">(grade ${h.grade || "N/A"}, ${h.score ?? "N/A"}/100)</span></h3>
       <div class="insights-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
         <div class="insights-card"><div class="insights-label">Grade</div><div class="insights-value" style="color:${gradeColor};font-size:28px;font-weight:700">${h.grade || "N/A"}</div></div>
-        <div class="insights-card"><div class="insights-label">Health Score</div><div class="insights-value">${h.score ?? "N/A"}/100</div></div>
+        <div class="insights-card"><div class="insights-label">Health Score</div><div class="insights-value">${h.score ?? "N/A"}/100</div><div style="font-size:11px;color:var(--text-secondary)">${h.score_coverage_pct != null ? `based on ${h.score_coverage_pct}% of the weighted checks` : ""}${(h.unmeasured_categories || []).length ? ` · not measured: ${(h.unmeasured_categories || []).join(", ")}` : ""}</div></div>
         <div class="insights-card"><div class="insights-label">Broken Links</div><div class="insights-value">${m.broken_links ?? "N/A"}${m.broken_link_rate != null ? ` (${m.broken_link_rate}%)` : ""}</div></div>
         <div class="insights-card"><div class="insights-label">Meta Description</div><div class="insights-value">${m.meta_description_coverage ?? "N/A"}%</div></div>
         <div class="insights-card"><div class="insights-label">Alt Text Coverage</div><div class="insights-value">${m.alt_text_coverage ?? "N/A"}%</div></div>
-        <div class="insights-card"><div class="insights-label">Core Web Vitals</div><div class="insights-value">${m.avg_cwv_score ?? "N/A"}<span style="font-size:11px">${m.cwv_pages_checked ? ` (${m.cwv_pages_checked} pages)` : ""}</span></div></div>
+        <div class="insights-card"><div class="insights-label">Core Web Vitals (field data)</div><div class="insights-value">${m.cwv_pass_rate != null ? m.cwv_pass_rate + "% pass" : "no field data"}<span style="font-size:11px">${m.cwv_pages_checked ? ` (${m.cwv_assessed_pages ?? 0} of ${m.cwv_pages_checked} sampled pages assessed)` : ""}</span></div></div>
         <div class="insights-card"><div class="insights-label">Thin Pages</div><div class="insights-value">${m.thin_pages ?? 0}</div></div>
         <div class="insights-card"><div class="insights-label">Pending Actions</div><div class="insights-value">${m.pending_action_items ?? 0}</div></div>
       </div>
@@ -2194,6 +2194,15 @@ async function loadReport(jobId) {
 async function loadReportExtras(jobId, preview) {
   const kv = (label, value) => `<div class="stat-card"><div class="stat-value" style="font-size:14px">${value}</div><div class="stat-label">${label}</div></div>`;
   const bar = (label, score, max = 100) => {
+    if (score === null || score === undefined) {
+      return `
+      <div style="margin:8px 0">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+          <span style="color:var(--text-secondary)">${label}</span><strong style="color:var(--text-secondary)">not measured</strong>
+        </div>
+        <div style="height:6px;border-radius:3px;background:var(--border)"></div>
+      </div>`;
+    }
     const pct = Math.max(0, Math.min(100, max ? (score / max) * 100 : 0));
     return `
       <div style="margin:8px 0">
@@ -2258,11 +2267,12 @@ async function loadReportExtras(jobId, preview) {
         ${d.scanned_pages ? `<p style="font-size:12px;color:var(--text-secondary);margin-top:6px">Scanned ${d.scanned_pages} pages — answer blocks: ${d.answer_block_pages ?? 0} · FAQ headings: ${d.faq_heading_pages ?? 0} · comparison tables: ${d.comparison_table_pages ?? 0} · freshly updated: ${d.fresh_pages ?? 0}</p>` : ""}
         ${d.blocked_training_agents?.length ? `<p style="font-size:12px;color:#d97706;margin-top:6px">⚠ robots.txt blocks training-only crawler(s): ${d.blocked_training_agents.join(", ")} — OK if intentional (blocks training, allows citation).</p>` : ""}
         <div style="max-width:460px">
-          ${bar("XML sitemap", subs.sitemap ?? 0, 25)}
-          ${bar("llms.txt", subs.llms_txt ?? 0, 25)}
-          ${bar("Structured data", subs.structured_data ?? 0, 25)}
-          ${bar("Extractable content", subs.extractable_content ?? 0, 25)}
+          ${bar("AI answer-crawler access (robots.txt)", subs.crawl_access)}
+          ${bar("XML sitemap", subs.sitemap)}
+          ${bar("Pages with structured data", subs.structured_data)}
+          ${bar("Pages with extractable content", subs.extractable_content)}
         </div>
+        <p style="font-size:11px;color:var(--text-secondary);margin-top:4px">Readiness signals, not measured AI citations. ${escapeHtml(d.score_basis || "")}</p>
         ${(d.ai_agents || []).length ? `
         <table class="data-table" style="margin-top:10px">
           <thead><tr><th>AI Agent</th><th>Status</th><th>Disallow rules</th><th>Crawl delay</th></tr></thead>
@@ -2758,7 +2768,7 @@ function renderSiteHealth(health, nested) {
   const el = document.getElementById("quality-health-card");
   if (!el) return;
   const h = health || {};
-  if (!h.score && !h.grade && !(h.issues || []).length) {
+  if (h.score == null && !h.grade && !(h.issues || []).length) {
     el.innerHTML = "";
     return;
   }

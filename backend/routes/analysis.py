@@ -497,7 +497,7 @@ async def run_analysis_pipeline(job_id: str, url: str, max_pages: int = 50, is_s
                     },
                     "freshness": {
                         "decayed_pages_count": w3.get("freshness", {}).get("decayed_pages_count", 0),
-                        "score": w3.get("freshness", {}).get("score", 100),
+                        "score": w3.get("freshness", {}).get("score"),
                         "evidence": w3.get("freshness", {}).get("decayed_pages", [])
                     },
                     "content_growth": {
