@@ -21,8 +21,28 @@ PSI_URL = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
 SERVICE = "pagespeed"
 HINT = "Add a Google PageSpeed Insights API key to .env (pagespeed_api_key). Free tier: 100 queries/day by default, extendable to 25k/day."
 
-CWV_WEIGHTS = {"lcp": 0.4, "inp": 0.4, "cls": 0.2}
-GOOD = {"lcp": 2500, "inp": 200, "cls": 0.1}
+CWV_METRICS = ("lcp", "inp", "cls")
+# Google's published Core Web Vitals thresholds: (good if <=, poor if >).
+CWV_THRESHOLDS = {"lcp": (2500, 4000), "inp": (200, 500), "cls": (0.1, 0.25)}
+GOOD = {k: v[0] for k, v in CWV_THRESHOLDS.items()}
+
+# PSI v5 field-metric names -> our short names, and Google's own per-metric verdicts.
+PSI_FIELD_KEYS = {
+    "LARGEST_CONTENTFUL_PAINT_MS": "lcp",
+    "INTERACTION_TO_NEXT_PAINT": "inp",
+    "CUMULATIVE_LAYOUT_SHIFT_SCORE": "cls",
+    "FIRST_CONTENTFUL_PAINT_MS": "fcp",
+    "EXPERIMENTAL_TIME_TO_FIRST_BYTE": "ttfb",
+}
+PSI_CATEGORY = {"FAST": "good", "AVERAGE": "needs-improvement", "SLOW": "poor"}
+
+
+def classify_metric(name: str, value) -> str | None:
+    """good / needs-improvement / poor per Google's thresholds (None if not measured)."""
+    if value is None or name not in CWV_THRESHOLDS:
+        return None
+    good, poor = CWV_THRESHOLDS[name]
+    return "good" if value <= good else ("needs-improvement" if value <= poor else "poor")
 
 
 def _metric_value(lh_audit: dict) -> float | None:
@@ -31,27 +51,57 @@ def _metric_value(lh_audit: dict) -> float | None:
     return lh_audit.get("numericValue")
 
 
-def _field_metrics(data: dict) -> dict:
-    """CrUX field data from loadingExperience. PSI v5 exposes `percentile` as a number;
-    CrUX-style `percentiles.p75` dicts are accepted as a fallback."""
-    exp = data.get("loadingExperience") or {}
-    metrics = exp.get("metrics") or {}
-    out = {}
-    for key, m in metrics.items():
+def _parse_experience(exp: dict) -> tuple[dict, dict]:
+    """(values, categories) from one PSI loadingExperience block."""
+    values, cats = {}, {}
+    for key, m in ((exp or {}).get("metrics") or {}).items():
         if not isinstance(m, dict):
             continue
-        percentiles = m.get("percentile")
-        if isinstance(percentiles, dict):
-            value = percentiles.get("p75")
+        name = PSI_FIELD_KEYS.get(key, key.lower())  # short names / CrUX-style keys are accepted too
+        raw = m.get("percentile")
+        if isinstance(raw, dict):  # CrUX-style {"p75": ...}
+            raw = raw.get("p75")
+            scaled = False
         else:
-            value = percentiles if isinstance(percentiles, (int, float)) else None
-        if value is None:
+            scaled = True
+        if isinstance(raw, str):
+            try:
+                raw = float(raw)
+            except ValueError:
+                raw = None
+        if not isinstance(raw, (int, float)):
             continue
-        if key.lower() == "cls":
-            out[key.lower()] = value / 1000.0 if value > 1 else value
-        else:
-            out[key.lower()] = value
-    return out
+        # PSI reports the CLS percentile multiplied by 100 (e.g. 5 means 0.05).
+        values[name] = raw / 100.0 if (name == "cls" and scaled) else raw
+        cat = PSI_CATEGORY.get(m.get("category"))
+        if cat:
+            cats[name] = cat
+    return values, cats
+
+
+def _field_experience(data: dict) -> dict:
+    """Field (CrUX) data: URL-level metrics, with origin-level data filling metrics the URL lacks."""
+    url_vals, url_cats = _parse_experience(data.get("loadingExperience") or {})
+    org_vals, org_cats = _parse_experience(data.get("originLoadingExperience") or {})
+    values, cats, scopes = dict(url_vals), dict(url_cats), set()
+    if url_vals:
+        scopes.add("url")
+    for k, v in org_vals.items():
+        if k not in values:
+            values[k] = v
+            if k in org_cats:
+                cats[k] = org_cats[k]
+            scopes.add("origin")
+    scope = None if not values else ("mixed" if len(scopes) > 1 else next(iter(scopes)))
+    # Google's category is authoritative; flag (do not hide) any disagreement with the value we derived.
+    for k in CWV_METRICS:
+        if k in values and k in cats and classify_metric(k, values[k]) != cats[k]:
+            logger.warning("PSI category %s disagrees with value %s for %s; using Google's category", cats[k], values[k], k)
+    return {"values": values, "categories": cats, "scope": scope}
+
+
+def _field_metrics(data: dict) -> dict:
+    return _field_experience(data)["values"]
 
 
 def _lab_metrics(lr: dict) -> dict:
@@ -64,15 +114,15 @@ def _lab_metrics(lr: dict) -> dict:
         "ttfb": _metric_value(audits.get("server-response-time")),
         "tbt": _metric_value(audits.get("total-blocking-time")),
     }
-    if out["inp"] is None:
-        out["inp"] = _metric_value(audits.get("max-potential-fid"))
+    # INP is a field-only metric: Lighthouse lab runs do not produce it. Do not substitute
+    # another metric (e.g. max-potential-fid) - leave it None and report TBT as the lab proxy.
     return out
 
 
 def _classify_source(field: dict, cwv: dict) -> str:
-    field_keys = set(k for k in CWV_WEIGHTS if field.get(k) is not None)
-    missing = set(k for k in CWV_WEIGHTS if cwv.get(k) is None)
-    if len(field_keys) == len(CWV_WEIGHTS):
+    field_keys = set(k for k in CWV_METRICS if field.get(k) is not None)
+    missing = set(k for k in CWV_METRICS if cwv.get(k) is None)
+    if len(field_keys) == len(CWV_METRICS):
         return "field"
     if field_keys and not missing:
         return "mixed"
@@ -81,24 +131,35 @@ def _classify_source(field: dict, cwv: dict) -> str:
     return "partial"
 
 
-def _cwv_score(cwv: dict) -> int:
-    values = []
-    for key, weight in CWV_WEIGHTS.items():
-        v = cwv.get(key)
-        if v is None:
-            continue
-        good = GOOD[key]
-        if v <= good:
-            s = 100
-        elif v <= good * 2:
-            s = 50
-        else:
-            s = 0
-        values.append((s, weight))
-    if not values:
+def _cwv_score(cwv: dict) -> int | None:
+    """Percentage of the *measured* core metrics that fall in Google's 'good' range.
+
+    Reproducible from the stored values (no invented weights or partial-credit buckets).
+    None when no core metric was measured.
+    """
+    classes = [classify_metric(k, cwv.get(k)) for k in CWV_METRICS if cwv.get(k) is not None]
+    if not classes:
         return None
-    total_w = sum(w for _, w in values)
-    return round(sum(s * w for s, w in values) / total_w)
+    return round(100 * sum(1 for c in classes if c == "good") / len(classes))
+
+
+def cwv_assessment(field: dict, categories: dict | None = None) -> dict:
+    """Core Web Vitals assessment from FIELD data only (lab data is diagnostic, not an assessment).
+
+    passed: LCP and CLS measured and good, and INP good where measured.
+    failed: any measured metric is not good.
+    insufficient-data: otherwise.
+    """
+    categories = categories or {}
+    per = {k: (categories.get(k) or classify_metric(k, field.get(k))) for k in CWV_METRICS}
+    measured = {k: v for k, v in per.items() if v}
+    if any(v != "good" for v in measured.values()):
+        overall = "failed"
+    elif "lcp" in measured and "cls" in measured:
+        overall = "passed"
+    else:
+        overall = "insufficient-data"
+    return {**per, "overall": overall}
 
 
 async def fetch_page_performance(url: str, strategy: str = "mobile") -> dict:
@@ -128,9 +189,10 @@ async def fetch_page_performance(url: str, strategy: str = "mobile") -> dict:
         await record_usage("pagespeed", "", f"psi_{strategy}", requests=1)
     except Exception:
         pass
-    field = _field_metrics(data)
+    exp = _field_experience(data)
+    field = exp["values"]
     lab = _lab_metrics(data.get("lighthouseResult") or {})
-    cwv = {k: (field.get(k) if field.get(k) is not None else lab.get(k)) for k in CWV_WEIGHTS}
+    cwv = {k: (field.get(k) if field.get(k) is not None else lab.get(k)) for k in CWV_METRICS}
     source = _classify_source(field, cwv)
     return {
         "url": url,
@@ -138,6 +200,8 @@ async def fetch_page_performance(url: str, strategy: str = "mobile") -> dict:
         "cwv": cwv,
         "cwv_score": _cwv_score(cwv),
         "cwv_source": source,
+        "cwv_assessment": cwv_assessment(field, exp["categories"]),
+        "field_scope": exp["scope"],
         "field": field,
         "lab": lab,
         "lighthouse_score": (data.get("lighthouseResult") or {}).get("categories", {}).get("performance", {}).get("score"),
@@ -154,7 +218,10 @@ async def fetch_performance(job_id: str, max_pages: int | None = None) -> dict:
 
     seen = set()
     deduped = []
-    for p in sorted(pages, key=lambda x: (x.get("page_type") == "home", x.get("url", ""))):
+    pages = [p for p in pages if (p.get("status_code") or 200) < 400]
+    # Home first (it was previously sorted LAST and dropped whenever the sample was smaller than the site),
+    # then pages closest to the homepage, then URL for a stable order.
+    for p in sorted(pages, key=lambda x: (x.get("page_type") != "home", x.get("click_depth") or 0, x.get("url", ""))):
         norm = normalize_url(p.get("url", ""))
         if not norm:
             continue
@@ -164,6 +231,8 @@ async def fetch_performance(job_id: str, max_pages: int | None = None) -> dict:
         p["url"] = norm
         deduped.append(p)
     pages = deduped
+    if not pages:
+        return {"status": "error", "message": "No crawlable pages for this job"}
 
     limit = min(len(pages), max_pages if max_pages is not None else settings.psi_page_sample)
     sem = asyncio.Semaphore(settings.psi_concurrency)
@@ -230,6 +299,10 @@ async def fetch_performance(job_id: str, max_pages: int | None = None) -> dict:
             src: sum(1 for r in results if r.get("strategy") == "mobile" and r.get("cwv_source") == src)
             for src in ("field", "lab", "mixed", "partial")
         },
+        "pages_total": len(pages),
+        "sample_size": limit,
+        "cwv_passed_pages": sum(1 for r in results if r.get("strategy") == "mobile" and (r.get("cwv_assessment") or {}).get("overall") == "passed"),
+        "cwv_failed_pages": sum(1 for r in results if r.get("strategy") == "mobile" and (r.get("cwv_assessment") or {}).get("overall") == "failed"),
         "field_pages": len(field_pages),
         "lab_only_pages": len(lab_pages),
         "field_avg": {

@@ -1,3 +1,4 @@
+import pytest
 """Tests for Phase 6: URL normalization + fact-anchored suggestions + keyword extraction."""
 
 from backend.services.url_normalizer import normalize_url, same_url
@@ -50,7 +51,8 @@ class TestItemChecks:
         checks = run_item_checks({"content_type": "image", "alt": "", "source_url": "https://x.com/i.jpg"})
         keys = [c["issue_key"] for c in checks]
         assert "image_alt_missing" in keys
-        assert all(c["confidence"] == 1.0 for c in checks)
+        # findings no longer carry hand-written confidence constants; they carry a derived basis
+        assert all("confidence" not in c for c in checks)
 
     def test_image_generic_alt(self):
         checks = run_item_checks({"content_type": "image", "alt": "pic", "source_url": "https://x.com/i.jpg"})
@@ -108,6 +110,7 @@ class TestPageChecks:
     def _page(self, **kw):
         base = {
             "url": "https://x.com/p",
+            "title": "A clear, descriptive page title for the page",
             "word_count": 500,
             "meta_description": "A sufficiently long meta description for the page.",
             "h1_count": 1,
@@ -186,3 +189,56 @@ class TestKeywordExtractor:
 
     def test_empty_corpus(self):
         assert extract_keywords_from_docs([], 5) == []
+
+
+class TestNewPageChecks:
+    def _page(self, **kw):
+        base = {"url": "https://x.com/p", "title": "A clear, descriptive page title for the page", "word_count": 500,
+                "meta_description": "A sufficiently long meta description for the page.", "h1_count": 1,
+                "is_indexable": True, "image_count": 0, "images_missing_alt": 0}
+        base.update(kw)
+        return base
+
+    def keys(self, page, ctx=None):
+        return [c["issue_key"] for c in run_page_checks(page, ctx)]
+
+    def test_missing_empty_and_whitespace_title(self):
+        assert "title_missing" in self.keys(self._page(title=""))
+        assert "title_missing" in self.keys(self._page(title="   "))
+        assert "title_missing" in self.keys(self._page(title=None))
+
+    def test_title_length_bounds(self):
+        assert "title_too_long" in self.keys(self._page(title="A" * 61))
+        assert "title_too_long" not in self.keys(self._page(title="A" * 60))
+        assert "title_too_short" in self.keys(self._page(title="Home"))
+        assert "title_too_short" not in self.keys(self._page(title="A" * 30))
+
+    def test_duplicate_title_uses_counts_from_context(self):
+        page = self._page(title="Same Title For Many Pages Here")
+        ctx = {"title_counts": {"same title for many pages here": 3}}
+        assert "title_duplicate" in self.keys(page, ctx)
+        assert "title_duplicate" not in self.keys(page, {"title_counts": {"same title for many pages here": 1}})
+
+    def test_noindex_pages_skip_title_checks(self):
+        assert "title_missing" not in self.keys(self._page(title="", is_indexable=False))
+
+    def test_error_page_reports_only_the_error(self):
+        checks = run_page_checks({"url": "https://x.com/gone", "status_code": 404, "word_count": 3, "title": "", "h1_count": 0})
+        assert [c["issue_key"] for c in checks] == ["page_http_error"]
+        assert checks[0]["evidence"]["status_code"] == 404 and checks[0]["impact"] == "medium"
+        assert run_page_checks({"url": "https://x.com/e", "status_code": 503})[0]["impact"] == "high"
+
+    @pytest.mark.parametrize("host", ["developer.mozilla.org", "latest-news.com", "contest.in", "shop.example.com"])
+    def test_normal_domains_do_not_trigger_staging(self, host):
+        assert "staging_leakage" not in self.keys(self._page(url=f"https://{host}/p"))
+
+    def test_real_staging_host_is_flagged_as_heuristic(self):
+        from backend.services.seo_rules import basis_for
+
+        checks = run_page_checks(self._page(url="https://dev.example.com/p"))
+        hit = next(c for c in checks if c["issue_key"] == "staging_leakage")
+        assert hit["evidence"]["matched_label"] == "dev"
+        assert basis_for("staging_leakage") == "heuristic"
+
+    def test_noindexed_staging_host_is_not_flagged(self):
+        assert "staging_leakage" not in self.keys(self._page(url="https://dev.example.com/p", is_indexable=False))

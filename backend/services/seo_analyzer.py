@@ -19,11 +19,13 @@ from backend.logging_setup import get_logger
 
 logger = get_logger("seo_analyzer")
 
+from backend.services.seo_rules import (  # noqa: E402  - policy thresholds live in one reviewable module
+    ALT_MIN_CHARS, DOC_OVERSIZED_BYTES, IMAGE_OVERSIZED_BYTES, META_MIN_CHARS,
+    TITLE_MAX_CHARS, TITLE_MIN_CHARS, basis_for, is_error_page, is_thin, staging_label,
+)
+
+# AEO/E-E-A-T findings are only raised for pages with at least this many main-content words.
 THIN_WORDS = 200
-META_MIN_CHARS = 50
-ALT_MIN_CHARS = 8
-IMAGE_OVERSIZED_BYTES = 200_000
-DOC_OVERSIZED_BYTES = 5_000_000
 PAGE_ACTION_CAP = 5
 ITEM_ACTION_CAP = 10
 LEARN_MIN_SAMPLES = 5
@@ -52,7 +54,6 @@ def _host(url: str) -> str:
 _DOC_OVERSIZED = {
     "issue_key": "document_oversized",
     "impact": "medium",
-    "confidence": 1.0,
     "condition": lambda d: (d.get("file_size") or 0) > DOC_OVERSIZED_BYTES,
     "issues": lambda d: [f"Document is {round((d.get('file_size') or 0) / 1048576, 1)} MB - slow downloads hurt engagement"],
     "improvements": lambda d: [
@@ -65,7 +66,6 @@ _DOC_OVERSIZED = {
 _DOC_EXTRACTION_FAILED = {
     "issue_key": "document_extraction_failed",
     "impact": "medium",
-    "confidence": 0.9,
     "condition": lambda e: bool(e.get("error")),
     "issues": lambda e: ["Document could not be parsed for text - content is invisible to search engines"],
     "improvements": lambda e: [
@@ -80,7 +80,6 @@ ITEM_CHECKS = {
         {
             "issue_key": "image_alt_missing",
             "impact": "high",
-            "confidence": 1.0,
             "condition": lambda d: not (d.get("alt") or "").strip(),
             "issues": lambda d: ["Image has no alt text"],
             "improvements": lambda d: [
@@ -91,7 +90,6 @@ ITEM_CHECKS = {
         {
             "issue_key": "image_alt_generic",
             "impact": "medium",
-            "confidence": 0.7,
             "condition": lambda d: 0 < len((d.get("alt") or "").strip()) < ALT_MIN_CHARS,
             "issues": lambda d: [f"Alt text is only {len((d.get('alt') or '').strip())} chars - too generic for image SEO"],
             "improvements": lambda d: [
@@ -102,7 +100,6 @@ ITEM_CHECKS = {
         {
             "issue_key": "image_alt_is_filename",
             "impact": "medium",
-            "confidence": 0.85,
             "condition": lambda d: (d.get("alt") or "").strip().lower() in (
                 _filename_stem(d.get("source_url", "")),
                 _filename(d.get("source_url", "")).lower(),
@@ -116,7 +113,6 @@ ITEM_CHECKS = {
         {
             "issue_key": "image_oversized",
             "impact": "medium",
-            "confidence": 1.0,
             "condition": lambda d: (d.get("file_size") or 0) > IMAGE_OVERSIZED_BYTES,
             "issues": lambda d: [
                 f"Image is {round((d.get('file_size') or 0) / 1024)} KB, above the ~200 KB guidance - slows LCP"
@@ -132,7 +128,6 @@ ITEM_CHECKS = {
         {
             "issue_key": "video_self_hosted",
             "impact": "high",
-            "confidence": 0.9,
             "condition": lambda d: _host(d.get("source_url")) == _host(d.get("page_url")),
             "issues": lambda d: ["Video is self-hosted on the same domain, slowing page load"],
             "improvements": lambda d: [
@@ -153,7 +148,6 @@ EXTRACTION_CHECKS = {
         {
             "issue_key": "pdf_no_text_layer",
             "impact": "high",
-            "confidence": 1.0,
             "condition": lambda e: not e.get("error") and not (e.get("word_count") or 0),
             "issues": lambda e: ["PDF has no selectable text - search engines cannot index it"],
             "improvements": lambda e: ["OCR the PDF to add a text layer, or convert the content to an HTML page"],
@@ -201,21 +195,27 @@ def run_page_checks(page: dict, ctx: dict | None = None) -> list[dict]:
     meta = (p.get("meta_description") or "").strip()
     indexable = p.get("is_indexable", True)
 
-    page_type = p.get("page_type", "").lower()
-    if "product" in page_type or "item" in page_type:
-        min_words = 150
-    elif "industry" in page_type or "category" in page_type:
-        min_words = 700
-    elif "legal" in page_type or "utility" in page_type:
-        min_words = 50
-    else:
-        min_words = 350
+    if is_error_page(p):
+        # An error response has no content to audit: report the error, not "thin content / no H1 / no meta".
+        code = p.get("status_code")
+        return [{
+            "issue_key": "page_http_error",
+            "impact": "high" if code >= 500 else "medium",
+            "identified_issues": [f"URL returned HTTP {code}"],
+            "improvement_suggestions": [
+                "Fix the page or remove/redirect internal links that point to it",
+                "If the URL was removed on purpose, return 410 or 301 to the closest replacement",
+            ],
+            "evidence": {"status_code": code, "url": p.get("url", "")},
+        }]
 
-    if indexable and word_count < min_words:
+    page_type = p.get("page_type", "").lower()
+    thin, min_words = is_thin(p)
+
+    if indexable and thin:
         checks.append({
             "issue_key": "thin_content",
             "impact": "medium",
-            "confidence": 0.9,
             "identified_issues": [f"Thin content ({page_type}): {word_count} words is below the {min_words}-word minimum"],
             "improvement_suggestions": [
                 f"Expand the page to {min_words}+ words of unique value",
@@ -227,7 +227,6 @@ def run_page_checks(page: dict, ctx: dict | None = None) -> list[dict]:
         checks.append({
             "issue_key": "meta_description_missing",
             "impact": "high",
-            "confidence": 1.0,
             "identified_issues": ["Page has no meta description"],
             "improvement_suggestions": [
                 "Write a 140-160 char meta description summarizing the page value with a call to action"
@@ -238,7 +237,6 @@ def run_page_checks(page: dict, ctx: dict | None = None) -> list[dict]:
         checks.append({
             "issue_key": "meta_description_short",
             "impact": "medium",
-            "confidence": 0.9,
             "identified_issues": [f"Meta description is only {len(meta)} chars (min {META_MIN_CHARS})"],
             "improvement_suggestions": ["Expand the meta description to 140-160 characters"],
             "evidence": {"meta_description": meta, "meta_chars": len(meta)},
@@ -247,17 +245,51 @@ def run_page_checks(page: dict, ctx: dict | None = None) -> list[dict]:
         checks.append({
             "issue_key": "meta_description_duplicate",
             "impact": "medium",
-            "confidence": 1.0,
             "identified_issues": [f"Meta description is used on {meta_counts.get(meta)} pages"],
             "improvement_suggestions": ["Write a unique meta description per page"],
             "evidence": {"meta_description": meta, "pages_using_it": meta_counts.get(meta)},
         })
+    title = (p.get("title") or "").strip()
+    if indexable:
+        if not title:
+            checks.append({
+                "issue_key": "title_missing",
+                "impact": "high",
+                "identified_issues": ["Page has no <title>"],
+                "improvement_suggestions": ["Add a unique <title> of about 30-60 characters that leads with the page's main topic"],
+                "evidence": {"title": ""},
+            })
+        else:
+            if len(title) > TITLE_MAX_CHARS:
+                checks.append({
+                    "issue_key": "title_too_long",
+                    "impact": "low",
+                    "identified_issues": [f"Title is {len(title)} chars (over {TITLE_MAX_CHARS}); search results will likely truncate it"],
+                    "improvement_suggestions": [f"Shorten the title to {TITLE_MAX_CHARS} characters or fewer, keeping the main topic first"],
+                    "evidence": {"title": title, "title_chars": len(title), "max_chars": TITLE_MAX_CHARS},
+                })
+            elif len(title) < TITLE_MIN_CHARS:
+                checks.append({
+                    "issue_key": "title_too_short",
+                    "impact": "low",
+                    "identified_issues": [f"Title is only {len(title)} chars (min {TITLE_MIN_CHARS})"],
+                    "improvement_suggestions": ["Expand the title to describe the page's topic and value"],
+                    "evidence": {"title": title, "title_chars": len(title), "min_chars": TITLE_MIN_CHARS},
+                })
+            dup = (ctx.get("title_counts") or {}).get(title.lower(), 0)
+            if dup > 1:
+                checks.append({
+                    "issue_key": "title_duplicate",
+                    "impact": "medium",
+                    "identified_issues": [f"Title is used on {dup} indexable pages"],
+                    "improvement_suggestions": ["Give every page a unique title that reflects its own content"],
+                    "evidence": {"title": title, "pages_using_it": dup},
+                })
     h1 = p.get("h1_count") or 0
     if h1 == 0:
         checks.append({
             "issue_key": "h1_missing",
             "impact": "high",
-            "confidence": 1.0,
             "identified_issues": ["Page has no H1 heading"],
             "improvement_suggestions": ["Add a single H1 containing the page's primary keyword"],
             "evidence": {"h1_count": 0},
@@ -266,7 +298,6 @@ def run_page_checks(page: dict, ctx: dict | None = None) -> list[dict]:
         checks.append({
             "issue_key": "h1_multiple",
             "impact": "low",
-            "confidence": 1.0,
             "identified_issues": [f"Page has {h1} H1 headings - dilutes topic focus"],
             "improvement_suggestions": ["Keep exactly one H1 and demote the rest to H2"],
             "evidence": {"h1_count": h1},
@@ -275,34 +306,31 @@ def run_page_checks(page: dict, ctx: dict | None = None) -> list[dict]:
         checks.append({
             "issue_key": "noindex_page",
             "impact": "low",
-            "confidence": 1.0,
             "identified_issues": ["Page is marked noindex"],
             "improvement_suggestions": ["Confirm this page is intentionally excluded from indexing"],
             "evidence": {"is_indexable": False},
         })
         
-    # Staging Containment / Leakage Check
+    # Non-production hostname check: only a *subdomain label* such as dev./staging./uat. counts.
     import urllib.parse
-    parsed_url = urllib.parse.urlparse(p.get("url", ""))
-    domain = parsed_url.netloc.lower()
-    is_staging = any(sub in domain for sub in ["staging", "test", "dev", "sandbox"])
-    if is_staging and indexable:
+    domain = urllib.parse.urlparse(p.get("url", "")).netloc.lower()
+    env_label = staging_label(domain)
+    if env_label and indexable:
         checks.append({
             "issue_key": "staging_leakage",
-            "impact": "high",
-            "confidence": 1.0,
-            "identified_issues": [f"Staging environment ({domain}) is indexable"],
+            "impact": "medium",
+            "identified_issues": [f"Hostname {domain} looks like a non-production environment ('{env_label}') but the page is indexable"],
             "improvement_suggestions": [
-                "Apply the 3 containment layers: 1) HTTP Basic Auth, 2) X-Robots-Tag: noindex, 3) robots.txt Disallow: /"
+                "If this is a staging/test site, block it: HTTP auth, X-Robots-Tag: noindex, and robots.txt Disallow: /",
+                "If it is the real production site, ignore this finding",
             ],
-            "evidence": {"domain": domain, "is_indexable": indexable},
+            "evidence": {"domain": domain, "matched_label": env_label, "is_indexable": indexable},
         })
     sd = ctx.get("sd") or {}
     if indexable and sd.get(p.get("url", "")) is False:
         checks.append({
             "issue_key": "no_structured_data",
             "impact": "low",
-            "confidence": 0.8,
             "identified_issues": ["Page has no structured data (schema.org) - invisible to rich results and AI answers"],
             "improvement_suggestions": [
                 "Add JSON-LD structured data matching the page type (Product, Article, FAQ, etc.)",
@@ -318,7 +346,6 @@ def run_page_checks(page: dict, ctx: dict | None = None) -> list[dict]:
             checks.append({
                 "issue_key": "entity_coverage_low",
                 "impact": "low",
-                "confidence": 0.6,
                 "identified_issues": ["Page title and meta description mention none of the site's core topics - hard for AI engines to cite"],
                 "improvement_suggestions": [
                     "Align the title/meta with at least one of the site's core topics",
@@ -337,7 +364,6 @@ def run_page_checks(page: dict, ctx: dict | None = None) -> list[dict]:
                 checks.append({
                     "issue_key": "keyword_cannibalization",
                     "impact": "high",
-                    "confidence": 0.9,
                     "identified_issues": [f"Multiple pages are competing for the exact same focus keyword: '{kw}'"],
                     "improvement_suggestions": [
                         "Ensure 'One page, one focus term'. De-optimize competing pages or merge them.",
@@ -355,7 +381,6 @@ def run_page_checks(page: dict, ctx: dict | None = None) -> list[dict]:
             checks.append({
                 "issue_key": "aeo_answer_first_missing",
                 "impact": "low",
-                "confidence": 0.9,
                 "identified_issues": ["The opening sentence does not directly answer a topic in <40 words"],
                 "improvement_suggestions": ["Rewrite the first paragraph to directly answer the user's intent within the first 40 words"],
                 "evidence": {"answer_first": False},
@@ -365,7 +390,6 @@ def run_page_checks(page: dict, ctx: dict | None = None) -> list[dict]:
             checks.append({
                 "issue_key": "aeo_fact_density_low",
                 "impact": "low",
-                "confidence": 0.8,
                 "identified_issues": [f"Fact density is too low ({page_eaat.get('fact_density', 0):.1f} per 100 words, target >=1.5)"],
                 "improvement_suggestions": ["Add more concrete facts (numbers, dimensions, standards) to make the text citable by AI engines"],
                 "evidence": {"fact_density": page_eaat.get("fact_density", 0)},
@@ -375,7 +399,6 @@ def run_page_checks(page: dict, ctx: dict | None = None) -> list[dict]:
             checks.append({
                 "issue_key": "aeo_orphaned_pronouns",
                 "impact": "low",
-                "confidence": 0.9,
                 "identified_issues": ["Headings are followed by orphaned pronouns (e.g., 'It', 'This')"],
                 "improvement_suggestions": ["Replace orphaned pronouns with explicit entities so the chunk is self-contained when retrieved by an AI engine"],
                 "evidence": {"self_contained": False},
@@ -387,7 +410,6 @@ def run_page_checks(page: dict, ctx: dict | None = None) -> list[dict]:
         checks.append({
             "issue_key": "page_images_missing_alt",
             "impact": "medium",
-            "confidence": 1.0,
             "identified_issues": [f"{missing} of {total_imgs} images on the page are missing alt text"],
             "improvement_suggestions": ["Add descriptive alt text to every image (see image-level actions)"],
             "evidence": {"images_missing_alt": missing, "image_count": total_imgs},
@@ -398,7 +420,6 @@ def run_page_checks(page: dict, ctx: dict | None = None) -> list[dict]:
         checks.append({
             "issue_key": "eaat_signals_missing",
             "impact": "medium",
-            "confidence": 0.7,
             "identified_issues": [
                 f"No E-E-A-T signals detected: {', '.join(eaat_sigs.get('missing_signals')[:4])}"
             ],
@@ -413,7 +434,6 @@ def run_page_checks(page: dict, ctx: dict | None = None) -> list[dict]:
         checks.append({
             "issue_key": "no_extractable_format",
             "impact": "low",
-            "confidence": 0.6,
             "identified_issues": ["No FAQ/list/table/definition formatting - hard for AI engines to quote in answers"],
             "improvement_suggestions": [
                 "Add an FAQ section or bulleted lists answering direct queries",
@@ -462,7 +482,7 @@ def _make_action(job_id: str, content_type: str, content_item_id: str, page_url:
         "source_url": source_url,
         "issue_key": check["issue_key"],
         "impact_on_ranking": impact,
-        "confidence": check.get("confidence", 0.5),
+        "basis": basis_for(check["issue_key"]),
         "evidence": evidence,
         "identified_issues": check.get("identified_issues") or [],
         "improvement_suggestions": check.get("improvement_suggestions") or [],
@@ -571,11 +591,17 @@ async def analyze_pages(job_id: str) -> dict:
         return {"status": "error", "message": "No pages for this job"}
 
     meta_counts = {}
+    title_counts = {}
     sd_map = {}
     for p in pages:
+        if is_error_page(p):
+            continue  # error pages must not skew duplicate counts or structured-data coverage
         m = (p.get("meta_description") or "").strip()
         if m:
             meta_counts[m] = meta_counts.get(m, 0) + 1
+        t = (p.get("title") or "").strip().lower()
+        if t and p.get("is_indexable", True):
+            title_counts[t] = title_counts.get(t, 0) + 1
         if p.get("html"):
             try:
                 from backend.services.structured_data import validate_structured_data
@@ -595,7 +621,7 @@ async def analyze_pages(job_id: str) -> dict:
             kw_lower = kw.lower()
             keyword_to_urls[kw_lower] = []
             for p in pages:
-                if not p.get("is_indexable", True):
+                if not p.get("is_indexable", True) or is_error_page(p):
                     continue
                 title = (p.get("title") or "").lower()
                 if kw_lower in title:
@@ -632,6 +658,7 @@ async def analyze_pages(job_id: str) -> dict:
         logger.warning("Page signals unavailable job=%s: %s", job_id, sig_err)
     ctx = {
         "meta_counts": meta_counts,
+        "title_counts": title_counts,
         "sd": sd_map,
         "corpus_keywords": corpus_keywords,
         "keyword_to_urls": keyword_to_urls,
