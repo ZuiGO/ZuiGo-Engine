@@ -80,8 +80,10 @@ ITEM_CHECKS = {
         {
             "issue_key": "image_alt_missing",
             "impact": "high",
-            "condition": lambda d: not (d.get("alt") or "").strip(),
-            "issues": lambda d: ["Image has no alt text"],
+            # Only a genuinely absent alt attribute on a real <img>. alt="" is the valid way to mark a
+            # decorative image, and <picture><source> elements have no alt (it belongs to the fallback <img>).
+            "condition": lambda d: d.get("tag") != "source" and d.get("alt") is None and "alt" in d,
+            "issues": lambda d: ["Image has no alt attribute"],
             "improvements": lambda d: [
                 f"Add descriptive alt text for '{_filename(d.get('source_url', ''))}' (max 125 chars, include the page's target keyword)"
             ],
@@ -91,7 +93,7 @@ ITEM_CHECKS = {
             "issue_key": "image_alt_generic",
             "impact": "medium",
             "condition": lambda d: 0 < len((d.get("alt") or "").strip()) < ALT_MIN_CHARS,
-            "issues": lambda d: [f"Alt text is only {len((d.get('alt') or '').strip())} chars - too generic for image SEO"],
+            "issues": lambda d: [f"Alt text is only {len((d.get('alt') or '').strip())} chars (under {ALT_MIN_CHARS}) - may be too short to describe the image"],
             "improvements": lambda d: [
                 "Replace generic alt text with a specific, descriptive description of the image content"
             ],
@@ -100,7 +102,7 @@ ITEM_CHECKS = {
         {
             "issue_key": "image_alt_is_filename",
             "impact": "medium",
-            "condition": lambda d: (d.get("alt") or "").strip().lower() in (
+            "condition": lambda d: bool((d.get("alt") or "").strip()) and (d.get("alt") or "").strip().lower() in (
                 _filename_stem(d.get("source_url", "")),
                 _filename(d.get("source_url", "")).lower(),
             ),

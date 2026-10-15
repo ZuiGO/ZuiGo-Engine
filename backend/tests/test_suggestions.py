@@ -48,7 +48,7 @@ class TestItemChecks:
         assert checks == []
 
     def test_image_missing_alt(self):
-        checks = run_item_checks({"content_type": "image", "alt": "", "source_url": "https://x.com/i.jpg"})
+        checks = run_item_checks({"content_type": "image", "tag": "img", "alt": None, "source_url": "https://x.com/i.jpg"})
         keys = [c["issue_key"] for c in checks]
         assert "image_alt_missing" in keys
         # findings no longer carry hand-written confidence constants; they carry a derived basis
@@ -242,3 +242,24 @@ class TestNewPageChecks:
 
     def test_noindexed_staging_host_is_not_flagged(self):
         assert "staging_leakage" not in self.keys(self._page(url="https://dev.example.com/p", is_indexable=False))
+
+
+class TestAltTextAccuracy:
+    def keys(self, **item):
+        base = {"content_type": "image", "tag": "img", "source_url": "https://x.com/i.jpg"}
+        return [c["issue_key"] for c in run_item_checks({**base, **item})]
+
+    def test_empty_alt_is_a_valid_decorative_image_not_a_missing_alt(self):
+        assert "image_alt_missing" not in self.keys(alt="")
+
+    def test_absent_alt_attribute_is_reported(self):
+        assert "image_alt_missing" in self.keys(alt=None)
+
+    def test_picture_source_elements_have_no_alt_and_are_not_flagged(self):
+        assert "image_alt_missing" not in self.keys(tag="source", alt=None)
+
+    def test_empty_alt_is_not_reported_as_filename_match(self):
+        assert "image_alt_is_filename" not in self.keys(alt="", source_url="https://x.com/")
+
+    def test_filename_alt_still_detected(self):
+        assert "image_alt_is_filename" in self.keys(alt="i", source_url="https://x.com/i.jpg")

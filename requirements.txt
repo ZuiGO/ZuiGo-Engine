@@ -23,3 +23,4 @@ arq>=0.25.0
 snowballstemmer>=2.2.0
 google-auth>=2.30.0
 requests>=2.31.0
+mongomock-motor>=0.0.30
