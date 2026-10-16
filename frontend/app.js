@@ -2298,7 +2298,7 @@ async function loadReportExtras(jobId, preview) {
       preview.insertAdjacentHTML("beforeend", `
         <h4 style="margin:20px 0 10px">Local SEO Readiness</h4>
         <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
-          ${kv("Score", (d.score ?? "N/A") + "/100")}
+          ${kv("Score", (d.score ?? "N/A") + "/100" + (d.applicable === false ? " (n/a unless a local business)" : ""))}
           ${kv("LocalBusiness schema", d.local_business_schema ? "✅" : "❌")}
           ${kv("On homepage", d.local_business_on_homepage ? "✅" : "❌")}
           ${kv("NAP consistency", d.nap_inconsistent ? "⚠ mismatched" : "✅ consistent")}
@@ -2306,12 +2306,7 @@ async function loadReportExtras(jobId, preview) {
           ${kv("Schema pages", d.pages_with_local_schema ?? 0)}
         </div>
         <div style="max-width:460px">
-          ${bar("LocalBusiness schema", subs.local_business_schema ?? 0, 40)}
-          ${bar("NAP data", subs.nap ?? 0, 20)}
-          ${bar("Contact page", subs.contact_page ?? 0, 15)}
-          ${bar("Address signals", subs.address_signals ?? 0, 10)}
-          ${bar("Geo signals", subs.geo_signals ?? 0, 10)}
-          ${bar("Reviews", subs.reviews ?? 0, 5)}
+          <div style="font-size:12px;color:var(--text-secondary)">Local signals present: <strong>${d.signals_present ?? 0} of ${d.signals_total ?? 6}</strong> (unweighted).</div>
         </div>
         ${d.nap_inconsistent ? `<p style="font-size:12px;color:#dc2626;margin-top:6px">⚠ Multiple different business names / phone numbers / addresses were found in structured data — keep one consistent NAP across all pages.</p>` : ""}
         ${nap ? `<p style="font-size:12px;color:var(--text-secondary);margin-top:6px">NAP: <strong>${escapeHtml(nap.name || "?")}</strong> · ${escapeHtml(nap.street_address || nap.address || "?")} · ${escapeHtml(nap.telephone || "?")}</p>` : ""}
@@ -2339,6 +2334,7 @@ async function loadReportExtras(jobId, preview) {
           ${kv("Lang-parameter pages", d.lang_param_pages ?? 0)}
           <div class="stat-card"><div class="stat-label">Sitemap "alternate" entries / codes</div><div class="stat-value" style="font-size:14px">${d.sitemap_alt_entries ?? 0} / ${(d.sitemap_alt_codes || []).length}</div></div>
           </div>
+          ${bar("Localized pages declaring hreflang", d.subscores && d.subscores.hreflang_coverage)}
           ${bar("Self-referencing pages", d.subscores && d.subscores.self_reference)}
           ${bar("x-default declared", d.subscores && d.subscores.x_default)}
           ${bar("Valid language/region codes", d.subscores && d.subscores.valid_codes)}
@@ -2386,6 +2382,7 @@ async function loadReportExtras(jobId, preview) {
         ${bar("Modern formats (WebP/AVIF)", d.subscores && d.subscores.modern_formats)}
         ${bar("Lazy loading", d.subscores && d.subscores.lazy_loading)}
         ${bar("Explicit dimensions", d.subscores && d.subscores.dimensions)}
+        ${bar("Images with alt text", d.subscores && d.subscores.alt_text)}
         ${checksList(d.checks)}`);
     }
   } catch (_) {}
@@ -2406,10 +2403,10 @@ async function loadReportExtras(jobId, preview) {
           ${kv("Unlinked (orphan spokes)", d.unlinked_template_pages ?? 0)}
         </div>
         <div style="max-width:460px">
-          ${bar("Structure detected", subs.structure ?? 0, 25)}
-          ${bar("Content uniqueness", subs.content_uniqueness ?? 0, 25)}
-          ${bar("Internal linking", subs.internal_linking ?? 0, 25)}
-          ${bar("Indexation / sitemap", subs.indexation ?? 0, 25)}
+          ${bar("Content uniqueness", subs.content_uniqueness)}
+          ${bar("Internal linking", subs.internal_linking)}
+          ${bar("Indexable template pages", subs.indexable_pages)}
+          ${bar("Crawled URLs in sitemap", subs.sitemap_coverage)}
         </div>
         ${clusters.length ? `
         <table class="data-table" style="margin-top:10px">

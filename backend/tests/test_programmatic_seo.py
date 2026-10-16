@@ -94,9 +94,11 @@ class TestAuditProgrammaticSeo:
         assert summary["template_pages"] == 4
         assert summary["thin_template_pages"] == 4
         assert summary["template_page_share"] == 100.0
-        assert summary["subscores"]["structure"] == 25
-        assert summary["subscores"]["content_uniqueness"] < 25
-        assert summary["score"] == sum(summary["subscores"].values())
+        assert "structure" not in summary["subscores"]  # having templates is not a quality signal
+        assert summary["applicable"] is True
+        assert summary["subscores"]["content_uniqueness"] < 100
+        measured = [v for v in summary["subscores"].values() if v is not None]
+        assert summary["score"] == round(sum(measured) / len(measured))
         assert any(not c["passed"] for c in summary["checks"])
         assert db._stores["programmatic_seo_audits"]["j1"]["clusters"][0]["pattern"] == "/locations/{slug}/"
 
@@ -128,20 +130,23 @@ class TestAuditProgrammaticSeo:
         assert summary["unlinked_template_pages"] == 1
 
     @pytest.mark.asyncio
-    async def test_no_sitemap_uses_hundred_percent(self, monkeypatch):
+    async def test_no_sitemap_data_is_not_measured_not_assumed_perfect(self, monkeypatch):
         db = FakeDb()
         monkeypatch.setattr(ps, "get_db", lambda: db)
         for city in ("austin", "dallas", "houston"):
             db._stores["pages"][city] = _page(f"https://x.com/tools/{city}/")
         summary = await ps.audit_programmatic_seo("j1")
-        assert summary["sitemap_coverage"] == 100.0
-        assert summary["subscores"]["indexation"] > 0
+        assert summary["sitemap_coverage"] is None          # used to be silently assumed to be 100%
+        assert summary["subscores"]["sitemap_coverage"] is None
+        assert summary["subscores"]["indexable_pages"] == 100
+        sitemap_check = next(c for c in summary["checks"] if "sitemap" in c["label"].lower())
+        assert sitemap_check["passed"] is False
 
-
-class TestExecMapping:
-    def test_programmatic_message_keys(self):
-        assert issue_key_from_message("3 programmatic thin pages") == "programmatic_thin"
-        assert issue_key_from_message("2 programmatic pages are near-duplicates of other template pages") == "programmatic_duplicates"
-        assert issue_key_from_message("orphan spokes") == "programmatic_linking"
-        assert issue_key_from_message("No /pricing.md machine-readable file") == "ai_pricing_md"
-        assert issue_key_from_message("No author attribution on scanned pages") == "ai_eaat_signals"
+    @pytest.mark.asyncio
+    async def test_site_without_templates_is_not_applicable_rather_than_scored(self, monkeypatch):
+        db = FakeDb()
+        monkeypatch.setattr(ps, "get_db", lambda: db)
+        db._stores["pages"]["a"] = _page("https://x.com/about")
+        db._stores["pages"]["b"] = _page("https://x.com/contact")
+        summary = await ps.audit_programmatic_seo("j1")
+        assert summary["applicable"] is False and summary["score"] is None

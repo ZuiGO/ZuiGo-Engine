@@ -157,7 +157,11 @@ class TestInternationalSeoAudit:
         assert summary["missing_self_ref"] == 0
         assert summary["one_way_pairs_count"] == 0
         assert summary["invalid_codes"] == 0
-        assert summary["score"] == 85  # self-ref, codes, reciprocity, locale URLs ok; x-default missing
+        # measured rates: coverage 100, self-ref 100, x-default 0 (missing on both pages), codes 100,
+        # reciprocity 100, locale URLs 100 -> unweighted mean 83
+        assert summary["subscores"]["x_default"] == 0
+        assert summary["subscores"]["self_reference"] == 100
+        assert summary["score"] == 83
 
     @pytest.mark.asyncio
     async def test_missing_self_ref_and_one_way(self, monkeypatch):

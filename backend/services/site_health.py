@@ -307,7 +307,7 @@ async def compute_site_health(job_id: str) -> dict:
     local = await db.local_seo_summaries.find_one({"job_id": job_id})
     if local:
         metrics["local_seo_score"] = local.get("score")
-        if local.get("score", 0) < 60:
+        if local.get("applicable", True) and (local.get("score") or 0) < 60:  # not a problem for non-local sites
             failed = [c.get("label", "") for c in (local.get("checks") or []) if not c.get("passed")][:3]
             missing = ", ".join(failed) if failed else f"score {local.get('score')}/100"
             issues.append({"severity": "low", "message": f"Local-SEO signals weak ({local.get('score')}/100): {missing}"})

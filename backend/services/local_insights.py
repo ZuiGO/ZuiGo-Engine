@@ -13,12 +13,14 @@ async def local_keywords(job_id: str) -> list[dict]:
 async def local_onpage(job_id: str) -> dict | None:
     db = get_db()
     pages = await db.pages.find({"job_id": job_id}).to_list(length=None)
+    pages = [p for p in pages if (p.get("status_code") or 200) < 400]
     if not pages:
         return None
 
     n = len(pages)
     indexable = sum(1 for p in pages if p.get("is_indexable", True))
     with_title = sum(1 for p in pages if p.get("title"))
+    title_evaluated = sum(1 for p in pages if p.get("title") is not None)
     with_meta = sum(1 for p in pages if p.get("meta_description"))
     meta_evaluated = sum(1 for p in pages if p.get("meta_description") is not None)
     with_h1 = sum(1 for p in pages if (p.get("h1_count") or 0) > 0)
@@ -30,15 +32,19 @@ async def local_onpage(job_id: str) -> dict | None:
     avg_words = round(sum(word_counts) / len(word_counts)) if word_counts else None
     avg_title = round(sum(title_lens) / len(title_lens)) if title_lens else None
 
-    score = 100
+    # Unweighted mean of the measured coverage rates (was 100 minus invented penalties of 60/15/10/5 points,
+    # and 100 when nothing could be measured). Error pages are not content pages.
+    comps = []
     if images_total:
-        score -= round(60 * images_missing_alt / images_total)
+        comps.append(100 * (1 - images_missing_alt / images_total))
     if meta_evaluated:
-        score -= round(15 * (meta_evaluated - with_meta) / meta_evaluated)
+        comps.append(100 * with_meta / meta_evaluated)
     if h1_evaluated:
-        score -= round(10 * (h1_evaluated - with_h1) / h1_evaluated)
-    score -= round(5 * (n - indexable) / n)
-    score = max(0, min(100, score))
+        comps.append(100 * with_h1 / h1_evaluated)
+    if title_evaluated:
+        comps.append(100 * with_title / title_evaluated)
+    comps.append(100 * indexable / n)
+    score = round(sum(comps) / len(comps))
 
     return {
         "score": score,
@@ -54,6 +60,7 @@ async def local_onpage(job_id: str) -> dict | None:
         "avg_word_count": avg_words,
         "avg_title_length": avg_title,
         "source": "local-crawl",
+        "score_basis": "unweighted mean of measured coverage rates (alt text, meta description, H1, title, indexable pages)",
     }
 
 

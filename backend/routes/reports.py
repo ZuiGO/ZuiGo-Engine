@@ -93,6 +93,15 @@ async def generate_report(job_id: str):
     return report
 
 
+def _sub(value) -> str:
+    """A 0-100 component value for a report table; None means it could not be measured."""
+    return "not measured" if value is None else "%s%%" % value
+
+
+def _yn(value) -> str:
+    return "present" if value == 100 else ("absent" if value == 0 else "not measured")
+
+
 def _esc(value) -> str:
     return _html_esc.escape(str(value if value is not None else ""), quote=True)
 
@@ -558,10 +567,11 @@ async def _detailed_report_html(job_id: str):
             "<h2 class='section-title'>AI-Search Visibility</h2>"
             "<p>Score: <b>%s</b> / 100%s</p>"
             % (_esc(ai_vis.get("score")), _bar(ai_vis.get("score")))
-            + "<table><tr><th>Sitemap</th><th>llms.txt</th><th>Structured data</th><th>Extractable</th></tr>"
-            "<tr><td>%s / 25</td><td>%s / 25</td><td>%s / 25</td><td>%s / 25</td></tr></table>"
-            % (_esc(subs.get("sitemap") or 0), _esc(subs.get("llms_txt") or 0),
-               _esc(subs.get("structured_data") or 0), _esc(subs.get("extractable_content") or 0))
+            + "<table><tr><th>AI answer-crawler access</th><th>Sitemap</th><th>Structured data</th><th>Extractable content</th></tr>"
+            "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr></table>"
+            % (_sub(subs.get("crawl_access")), _sub(subs.get("sitemap")),
+               _sub(subs.get("structured_data")), _sub(subs.get("extractable_content")))
+            + "<p class='muted'>Readiness signals only - not measured AI citations. llms.txt is reported but not scored. %s</p>" % _esc(ai_vis.get("score_basis") or "")
             + ("<p>robots.txt: <b>%s</b> · llms.txt: <b>%s</b> · structured data on <b>%s</b> of <b>%s</b> pages · "
                "extractable content on <b>%s</b> of <b>%s</b> pages</p>"
                % (_esc(ai_vis.get("robots_status") or ("found" if ai_vis.get("robots_txt_found") else "missing")),
@@ -609,16 +619,16 @@ async def _detailed_report_html(job_id: str):
             + ('<p class="muted" style="color:#dc2626">⚠ Multiple differing NAP values across pages — keep one consistent Name, Address, Phone.</p>'
                if local_seo.get("nap_inconsistent") else "")
             + "<p class='muted'>Signals: %s</p>" % _esc(sig_txt)
-            + "<table><tr><th>Area</th><th>Points</th><th>Max</th></tr>"
-            "<tr><td>LocalBusiness schema</td><td>%s</td><td>40</td></tr>"
-            "<tr><td>NAP data</td><td>%s</td><td>20</td></tr>"
-            "<tr><td>Contact page</td><td>%s</td><td>15</td></tr>"
-            "<tr><td>Address signals</td><td>%s</td><td>10</td></tr>"
-            "<tr><td>Geo signals</td><td>%s</td><td>10</td></tr>"
-            "<tr><td>Reviews</td><td>%s</td><td>5</td></tr></table>"
-            % (_esc(subs.get("local_business_schema") or 0), _esc(subs.get("nap") or 0),
-               _esc(subs.get("contact_page") or 0), _esc(subs.get("address_signals") or 0),
-               _esc(subs.get("geo_signals") or 0), _esc(subs.get("reviews") or 0))
+            + "<table><tr><th>Signal</th><th>Status</th></tr>"
+            "<tr><td>LocalBusiness schema</td><td>%s</td></tr>"
+            "<tr><td>NAP data</td><td>%s</td></tr>"
+            "<tr><td>Contact page</td><td>%s</td></tr>"
+            "<tr><td>Address signals</td><td>%s</td></tr>"
+            "<tr><td>Geo signals</td><td>%s</td></tr>"
+            "<tr><td>Reviews</td><td>%s</td></tr></table>"
+            % (_yn(subs.get("local_business_schema")), _yn(subs.get("nap")),
+               _yn(subs.get("contact_page")), _yn(subs.get("address_signals")),
+               _yn(subs.get("geo_signals")), _yn(subs.get("reviews")))
             + _checks_html(local_seo.get("checks"))
         )
 
@@ -649,15 +659,16 @@ async def _detailed_report_html(job_id: str):
                    _esc(hreflang_audit.get("invalid_codes", 0)),
                    _esc(hreflang_audit.get("one_way_pairs_count", 0)),
                    _esc(hreflang_audit.get("canonical_conflicts_count", 0)))
-                + "<table><tr><th>Area</th><th>Points</th><th>Max</th></tr>"
-                "<tr><td>Self-referencing pages</td><td>%s</td><td>30</td></tr>"
-                "<tr><td>x-default declared</td><td>%s</td><td>15</td></tr>"
-                "<tr><td>Valid language/region codes</td><td>%s</td><td>15</td></tr>"
-                "<tr><td>Reciprocal pairs</td><td>%s</td><td>25</td></tr>"
-                "<tr><td>Locale-based URL structure</td><td>%s</td><td>15</td></tr></table>"
-                % (_esc(subs.get("self_reference") or 0), _esc(subs.get("x_default") or 0),
-                   _esc(subs.get("valid_codes") or 0), _esc(subs.get("reciprocal") or 0),
-                   _esc(subs.get("locale_urls") or 0))
+                + "<table><tr><th>Area</th><th>Score (0-100)</th></tr>"
+                "<tr><td>Localized pages declaring hreflang</td><td>%s</td></tr>"
+                "<tr><td>Self-referencing pages</td><td>%s</td></tr>"
+                "<tr><td>x-default declared</td><td>%s</td></tr>"
+                "<tr><td>Valid language/region codes</td><td>%s</td></tr>"
+                "<tr><td>Reciprocal pairs</td><td>%s</td></tr>"
+                "<tr><td>Locale-based URL structure</td><td>%s</td></tr></table>"
+                % (_sub(subs.get("hreflang_coverage")), _sub(subs.get("self_reference")), _sub(subs.get("x_default")),
+                   _sub(subs.get("valid_codes")), _sub(subs.get("reciprocal")),
+                   _sub(subs.get("locale_urls")))
                 + (('<p class="muted">Sitemap: %s "alternate" entries, codes: %s%s</p>'
                     % (_esc(hreflang_audit.get("sitemap_alt_entries", 0)),
                        _esc(", ".join(hreflang_audit.get("sitemap_alt_codes") or []) or "none",
@@ -693,13 +704,13 @@ async def _detailed_report_html(job_id: str):
                _esc(url_hygiene.get("underscore_paths", url_hygiene.get("underscore_slugs", 0))),
                _esc(url_hygiene.get("long_slugs", 0)),
                (' · top parameters: %s' % _esc(", ".join("%s (%d)" % (k, v or 0) for k, v in top_params[:6]))) if top_params else "")
-            + "<table><tr><th>Area</th><th>Points</th><th>Max</th></tr>"
-            "<tr><td>Parameter control</td><td>%s</td><td>40</td></tr>"
-            "<tr><td>Readable paths</td><td>%s</td><td>20</td></tr>"
-            "<tr><td>Slug length</td><td>%s</td><td>20</td></tr>"
-            "<tr><td>Slash consistency</td><td>%s</td><td>20</td></tr></table>"
-            % (_esc(subs.get("parameter_control") or 0), _esc(subs.get("readable_paths") or 0),
-               _esc(subs.get("slug_length") or 0), _esc(subs.get("slash_consistency") or 0))
+            + "<table><tr><th>Area</th><th>Score (0-100)</th></tr>"
+            "<tr><td>Parameter control</td><td>%s</td></tr>"
+            "<tr><td>Readable paths</td><td>%s</td></tr>"
+            "<tr><td>Slug length</td><td>%s</td></tr>"
+            "<tr><td>Slash consistency</td><td>%s</td></tr></table>"
+            % (_sub(subs.get("parameter_control")), _sub(subs.get("readable_paths")),
+               _sub(subs.get("slug_length")), _sub(subs.get("slash_consistency")))
             + _checks_html(url_hygiene.get("checks"))
         )
 
@@ -716,12 +727,13 @@ async def _detailed_report_html(job_id: str):
                _esc(image_opt.get("modern_images", image_opt.get("modern", 0))),
                _esc(image_opt.get("lazy_images", image_opt.get("lazy", 0))),
                _esc(image_opt.get("missing_dimensions", image_opt.get("dims_missing", 0))))
-            + "<table><tr><th>Area</th><th>Points</th><th>Max</th></tr>"
-            "<tr><td>Modern formats (WebP/AVIF)</td><td>%s</td><td>40</td></tr>"
-            "<tr><td>Lazy loading</td><td>%s</td><td>30</td></tr>"
-            "<tr><td>Explicit dimensions</td><td>%s</td><td>30</td></tr></table>"
-            % (_esc(subs.get("modern_formats") or 0), _esc(subs.get("lazy_loading") or 0),
-               _esc(subs.get("dimensions") or 0))
+            + "<table><tr><th>Area</th><th>Score (0-100)</th></tr>"
+            "<tr><td>Modern formats (WebP/AVIF)</td><td>%s</td></tr>"
+            "<tr><td>Lazy loading</td><td>%s</td></tr>"
+            "<tr><td>Explicit dimensions</td><td>%s</td></tr>"
+            "<tr><td>Images with alt text</td><td>%s</td></tr></table>"
+            % (_sub(subs.get("modern_formats")), _sub(subs.get("lazy_loading")),
+               _sub(subs.get("dimensions")), _sub(subs.get("alt_text")))
             + _checks_html(image_opt.get("checks"))
         )
 
@@ -744,6 +756,14 @@ async def _detailed_report_html(job_id: str):
                _esc(pseo.get("template_page_share", 0)), _esc(pseo.get("total_pages", 0)),
                _esc(pseo.get("thin_template_pages", 0)), _esc(pseo.get("duplicate_template_pages", 0)),
                _esc(pseo.get("unlinked_template_pages", 0)), _esc(pseo.get("duplicate_title_template_pages", 0)))
+            + (
+                "<table><tr><th>Area</th><th>Score (0-100)</th></tr>"
+                "<tr><td>Content uniqueness</td><td>%s</td></tr><tr><td>Internal linking</td><td>%s</td></tr>"
+                "<tr><td>Indexable template pages</td><td>%s</td></tr><tr><td>Crawled URLs in sitemap</td><td>%s</td></tr></table>"
+                % (_sub(subs.get("content_uniqueness")), _sub(subs.get("internal_linking")),
+                   _sub(subs.get("indexable_pages")), _sub(subs.get("sitemap_coverage")))
+                if pseo.get("applicable", True) else "<p class='muted'>Not applicable - no template page clusters detected.</p>"
+            )
             + "<table><tr><th>Template pattern</th><th>Pages</th><th>Thin</th><th>Near-dup</th><th>Unlinked</th></tr>%s</table>" % cluster_rows
             + _checks_html(pseo.get("checks"))
         )

@@ -50,10 +50,10 @@ allow-list. Runs are executed by `build_agent_for_run()` (API and arq worker).
 9. Accuracy is tested against ground truth: `backend/tests/golden/` crawls a local
    site whose true facts are known. When you find an accuracy bug, add the failing
    case to `golden/site.py` and an assertion first, then fix the code.
-10. Still fixed-point checklists (NOT measured rates yet): `local_seo`,
-    `programmatic_seo`, `international_seo` subscores, `local_insights`, the
-    single-page comparison score and the competitor opportunity score. Treat them as
-    policy-weighted checklists, and convert them to measured rates when touching them.
+10. Every audit score is now a measured rate (unweighted mean of measured components) or None.
+    Scores that only apply to some sites carry `applicable` (local_seo, programmatic_seo,
+    international_seo) - "not applicable" is not a failing grade. `test_no_fabricated_results.py`
+    fails if a missing score defaults to 100 or an invented "after" value reappears.
 
 ## Project
 SEO analysis engine: crawl a site, classify content, analyze, recommend,

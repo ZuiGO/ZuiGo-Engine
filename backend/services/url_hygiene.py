@@ -32,6 +32,7 @@ async def audit_url_hygiene(job_id: str) -> dict:
     param_pages = 0
     facet_pages = 0
     uppercase_paths = 0
+    unreadable_pages = 0
     underscore_paths = 0
     long_slugs = 0
     slash_pages = 0
@@ -55,10 +56,14 @@ async def audit_url_hygiene(job_id: str) -> dict:
                 if name in ("lang", "locale", "language", "hl"):
                     lang_param_pages += 1
         path = parsed.path
-        if any(c.isupper() for c in path):
+        _upper = any(c.isupper() for c in path)
+        _under = "_" in path
+        if _upper:
             uppercase_paths += 1
-        if "_" in path:
+        if _under:
             underscore_paths += 1
+        if _upper or _under:
+            unreadable_pages += 1
         if path != "/":
             slug = [s for s in path.split("/") if s][-1] or ""
             if len(slug) > MAX_SLUG_LENGTH:
@@ -72,13 +77,17 @@ async def audit_url_hygiene(job_id: str) -> dict:
     both_slash = slash_pages > 0 and no_slash_pages > 0
     top_params = param_counter.most_common(10)
 
+    # Each component is the measured share (0-100) of pages that are clean (was 40/20/20/20 all-or-nothing buckets).
+    styled = slash_pages + no_slash_pages
     subscores = {
-        "parameter_control": 40 if param_pages == 0 else 20 if facet_pages == 0 else 0,
-        "readable_paths": 20 if not uppercase_paths and not underscore_paths else 0,
-        "slug_length": 20 if long_slugs == 0 else 0,
-        "slash_consistency": 20 if not both_slash else 0,
+        "parameter_control": round(100 * (1 - param_pages / total)),
+        "readable_paths": round(100 * (1 - unreadable_pages / total)),
+        "slug_length": round(100 * (1 - long_slugs / total)),
+        # share of pages following the site's dominant trailing-slash convention
+        "slash_consistency": round(100 * max(slash_pages, no_slash_pages) / styled) if styled else None,
     }
-    score = sum(subscores.values())
+    _measured = [v for v in subscores.values() if v is not None]
+    score = round(sum(_measured) / len(_measured)) if _measured and len(pages) else None
 
     checks = [
         {
@@ -122,6 +131,7 @@ async def audit_url_hygiene(job_id: str) -> dict:
         "job_id": job_id,
         "score": score,
         "subscores": subscores,
+        "score_basis": "unweighted mean of the measured page shares in subscores",
         "checks": checks,
         "pages_total": len(pages),
         "param_pages": param_pages,
