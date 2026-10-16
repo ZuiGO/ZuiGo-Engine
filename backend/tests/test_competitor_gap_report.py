@@ -159,8 +159,7 @@ def test_opportunity_score_and_recommendations():
         "authority_analysis": {"comp_domain_rank": 50, "target_domain_rank": 20},
     }
     score = _opportunity_score(se_rich)
-    assert isinstance(score, int)
-    assert 0 <= score <= 100
+    assert score == 80  # 20 of the competitor's 25 analysed keywords are missing from the target
 
     recs = _build_recommendations(se_rich)
     assert any(r["priority"] == "high" for r in recs)
@@ -222,3 +221,16 @@ def test_build_competitor_report_handles_empty_row():
     assert report["keyword"]["missing_detail"] == []
     assert report["content"]["missing_count"] is None
     assert report["insights"]["recommendations"] == []
+
+def test_opportunity_score_uses_true_counts_not_the_truncated_lists():
+    se_rich = {"keyword_analysis": {"missing_count": 300, "shared_count": 100,
+                                    "missing_detail": [{}] * 30, "shared_detail": [{}] * 30}}
+    assert _opportunity_score(se_rich) == 75
+
+
+def test_traffic_and_backlink_deltas_no_longer_change_the_score():
+    ka = {"missing_count": 1, "shared_count": 1}
+    base = _opportunity_score({"keyword_analysis": ka})
+    rich = _opportunity_score({"keyword_analysis": ka, "traffic_analysis": {"competitor_traffic": 10**6, "target_traffic": 1},
+                               "backlink_analysis": {"referring_domains_delta": 10**5}})
+    assert base == rich == 50

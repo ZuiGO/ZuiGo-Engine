@@ -4786,12 +4786,19 @@ function renderPageComparison(data) {
   }
 
   if (data.web_vitals) {
-    document.getElementById('comp-vitals-old').textContent = data.web_vitals?.old || '--';
-    document.getElementById('comp-vitals-new').textContent = data.web_vitals?.new || '--';
+    const wv = data.web_vitals;
+    const fmt = (v) => (v === null || v === undefined ? 'not measured' : v);
+    document.getElementById('comp-vitals-old').textContent = fmt(wv.old);
+    document.getElementById('comp-vitals-new').textContent = fmt(wv.new);
 
-    const vDelta = (data.web_vitals?.new || 0) - (data.web_vitals?.old || 0);
     const vDeltaEl = document.getElementById('comp-vitals-delta');
-    if (vDelta > 0) {
+    const bothMeasured = typeof wv.old === 'number' && typeof wv.new === 'number';
+    const vDelta = bothMeasured ? wv.new - wv.old : 0;
+    if (!bothMeasured) {
+      vDeltaEl.textContent = wv.note || 'Not measured';
+      vDeltaEl.style.background = '#f3f4f6';
+      vDeltaEl.style.color = '#374151';
+    } else if (vDelta > 0) {
       vDeltaEl.textContent = `+${vDelta} Points`;
       vDeltaEl.style.background = '#dcfce7';
       vDeltaEl.style.color = '#166534';

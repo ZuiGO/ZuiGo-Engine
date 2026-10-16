@@ -22,6 +22,7 @@ import re
 TITLE_MIN_CHARS = 30    # shorter titles rarely describe the page
 TITLE_MAX_CHARS = 60    # Google truncates by pixel width (~600px); ~60 chars is the usual limit
 META_MIN_CHARS = 50
+META_MAX_CHARS = 160   # search results usually truncate descriptions beyond ~160 chars
 ALT_MIN_CHARS = 8
 IMAGE_OVERSIZED_BYTES = 200_000
 DOC_OVERSIZED_BYTES = 5_000_000

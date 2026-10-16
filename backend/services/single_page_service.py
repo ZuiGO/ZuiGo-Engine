@@ -15,49 +15,30 @@ logger = get_logger("single_page_service")
 
 import groq
 
+def onpage_checks(title: str, desc: str, h1: str, alt_text: str) -> list[dict]:
+    """The on-page checklist behind the score: every check is a plain pass/fail on the field's content."""
+    from backend.services.seo_rules import META_MAX_CHARS, META_MIN_CHARS, TITLE_MAX_CHARS, TITLE_MIN_CHARS
+
+    t, d, h, a = (title or "").strip(), (desc or "").strip(), (h1 or "").strip(), (alt_text or "").strip()
+    return [
+        {"check": "title_present", "passed": bool(t)},
+        {"check": "title_length", "passed": TITLE_MIN_CHARS <= len(t) <= TITLE_MAX_CHARS, "detail": f"{len(t)} chars (target {TITLE_MIN_CHARS}-{TITLE_MAX_CHARS})"},
+        {"check": "meta_description_present", "passed": bool(d)},
+        {"check": "meta_description_length", "passed": META_MIN_CHARS <= len(d) <= META_MAX_CHARS, "detail": f"{len(d)} chars (target {META_MIN_CHARS}-{META_MAX_CHARS})"},
+        {"check": "h1_present", "passed": bool(h)},
+        {"check": "image_alt_present", "passed": bool(a)},
+    ]
+
+
 def evaluate_onpage_score(title: str, desc: str, h1: str, alt_text: str, robots_txt: str = "", llms_txt: str = "") -> int:
+    """Share (0-100) of the on-page checklist that passes.
+
+    ``robots_txt`` / ``llms_txt`` are accepted for backwards compatibility but ignored: they are
+    site-wide files, not page content, and used to add free points to an "on-page" score.
     """
-    Evaluates on-page SEO fields based on length and descriptiveness.
-    Returns a score out of 100.
-    """
-    score = 0
-    
-    title_str = (title or "").strip()
-    if title_str:
-        if 15 <= len(title_str) <= 60:
-            score += 30
-        else:
-            score += 15
-            
-    desc_str = (desc or "").strip()
-    if desc_str:
-        if 50 <= len(desc_str) <= 160:
-            score += 30
-        else:
-            score += 15
-            
-    h1_str = (h1 or "").strip()
-    if h1_str:
-        words = len(h1_str.split())
-        if words >= 3:
-            score += 20
-        else:
-            score += 10
-            
-    alt_str = (alt_text or "").strip()
-    if alt_str:
-        words = len(alt_str.split())
-        if words >= 2:
-            score += 10
-        else:
-            score += 5
-            
-    if (robots_txt or "").strip():
-        score += 5
-    if (llms_txt or "").strip():
-        score += 5
-        
-    return max(0, min(100, score))
+    checks = onpage_checks(title, desc, h1, alt_text)
+    return round(100 * sum(1 for c in checks if c["passed"]) / len(checks))
+
 
 async def generate_suggestions(title: str, h1: str, desc: str, h2: str, p_text: str, img_alt: str) -> dict:
     """
@@ -364,7 +345,7 @@ async def generate_visual_comparison(job_id: str, url: str) -> dict:
                 )
 
         # 5. Get Real Web Vitals
-        old_vitals = 56 # Fallback
+        old_vitals = None  # unmeasured unless PageSpeed returns a real value; never a made-up fallback
         try:
             psi_result = await psi_task
             score = psi_result.get("cwv_score")
@@ -377,8 +358,8 @@ async def generate_visual_comparison(job_id: str, url: str) -> dict:
         except Exception as e:
             logger.warning("Failed to fetch real web vitals for %s: %s", url, e)
 
-        # Simulate a slight improvement for the "optimized" version if it's not already perfect
-        new_vitals = min(100, old_vitals + 12) if old_vitals < 90 else old_vitals
+        # The edited copy is a local preview that PageSpeed cannot reach, so its Core Web Vitals are not
+        # measurable. Do not invent an "after" value.
 
         # 6. Return comparison data
         comparison_data = {
@@ -388,8 +369,9 @@ async def generate_visual_comparison(job_id: str, url: str) -> dict:
             },
             "web_vitals": {
                 "old": old_vitals,
-                "new": new_vitals,
-                "delta": new_vitals - old_vitals
+                "new": None,
+                "delta": None,
+                "note": "Measured for the live page only; the edited preview cannot be measured.",
             },
             "fields": [
                 {
