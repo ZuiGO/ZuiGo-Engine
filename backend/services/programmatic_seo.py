@@ -88,9 +88,8 @@ async def audit_programmatic_seo(job_id: str) -> dict:
     orphan_urls = {p.get("page_url") for p in (orphan_doc or {}).get("pages") or []}
 
     sitemap_doc = await db.sitemap_audits.find_one({"job_id": job_id})
+    # No sitemap data means "not measured" - it used to be assumed 100% covered.
     sitemap_coverage = sitemap_doc.get("crawled_coverage") if sitemap_doc else None
-    if sitemap_coverage is None:
-        sitemap_coverage = 100.0
 
     clusters = detect_clusters(pages)
     page_by_url = {p.get("url"): p for p in pages}
@@ -136,7 +135,9 @@ async def audit_programmatic_seo(job_id: str) -> dict:
     template_share = template_pages / total_pages if total_pages else 0
     indexable_ratio = (template_pages - not_indexable) / template_pages if template_pages else 0
 
-    structure = round(25 * min(1.0, template_share / UNIQUE_SHARE_TARGET))
+    # Quality components, each a measured 0-100 rate. "Has template pages" is not a quality signal, so the old
+    # 25-point "structure" component (which rewarded merely having templates) is gone; the template share is
+    # still reported as a plain number. A site with no templates is "not applicable", not a poor score.
     uniqueness_ratios = []
     for c in clusters:
         n = max(len(c["pages"]), 1)
@@ -148,18 +149,15 @@ async def audit_programmatic_seo(job_id: str) -> dict:
             + (dup_titles / n)
         ) / 3
         uniqueness_ratios.append(1.0 - weakness)
-    content_uniqueness = round(25 * (sum(uniqueness_ratios) / len(uniqueness_ratios))) if uniqueness_ratios else 0
-    unlinked_ratio = unlinked_total / template_pages if template_pages else 0
-    internal_linking = round(25 * (1.0 - unlinked_ratio))
-    indexation = round(25 * min(1.0, sitemap_coverage / 100.0) * indexable_ratio)
-
+    applicable = template_pages > 0
     subscores = {
-        "structure": structure,
-        "content_uniqueness": content_uniqueness,
-        "internal_linking": internal_linking,
-        "indexation": indexation,
+        "content_uniqueness": round(100 * sum(uniqueness_ratios) / len(uniqueness_ratios)) if uniqueness_ratios else None,
+        "internal_linking": round(100 * (1.0 - unlinked_total / template_pages)) if applicable else None,
+        "indexable_pages": round(100 * indexable_ratio) if applicable else None,
+        "sitemap_coverage": round(sitemap_coverage) if sitemap_coverage is not None else None,
     }
-    score = sum(subscores.values())
+    _measured = [v for v in subscores.values() if v is not None]
+    score = round(sum(_measured) / len(_measured)) if applicable and _measured else None
 
     checks = [
         {
@@ -199,8 +197,8 @@ async def audit_programmatic_seo(job_id: str) -> dict:
             ),
         },
         {
-            "passed": sitemap_coverage >= 60,
-            "label": "Template pages covered by the sitemap",
+            "passed": sitemap_coverage is not None and sitemap_coverage >= 60,
+            "label": "Crawled URLs covered by the sitemap",
             "detail": (
                 f"Sitemap covers {sitemap_coverage}% of crawled URLs."
                 if sitemap_coverage is not None
@@ -213,6 +211,8 @@ async def audit_programmatic_seo(job_id: str) -> dict:
         "job_id": job_id,
         "score": score,
         "subscores": subscores,
+        "applicable": applicable,
+        "score_basis": "unweighted mean of the measured components in subscores; null when the site has no template pages",
         "checks": checks,
         "clusters": cluster_rows,
         "clusters_count": len(clusters),

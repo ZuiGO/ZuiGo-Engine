@@ -3,6 +3,7 @@
 Canonicalizes a crawled target so the crawler, link checker, performance
 audit and duplicate-content checks all agree on what counts as "one page".
 """
+import re
 from urllib.parse import urlparse, urlunparse
 
 TRACKING_PARAMS = {
@@ -12,6 +13,14 @@ TRACKING_PARAMS = {
 }
 
 DEFAULT_PORTS = {"http": "80", "https": "443"}
+
+# URI schemes that are not web pages (links to apps/contacts/scripts). They must never be
+# turned into https:// URLs: "mailto:a@b.co" is not "https://mailto:a@b.co/".
+NON_WEB_SCHEMES = {
+    "mailto", "tel", "sms", "javascript", "data", "file", "ftp", "sftp", "callto", "geo",
+    "whatsapp", "skype", "intent", "market", "blob", "about", "chrome", "view-source", "webcal",
+}
+_SCHEME_RE = re.compile(r"^([a-zA-Z][a-zA-Z0-9+.\-]*):")
 
 
 def normalize_url(url: str, strip_tracking: bool = True) -> str:
@@ -29,6 +38,9 @@ def normalize_url(url: str, strip_tracking: bool = True) -> str:
     raw = url.strip()
     if not raw:
         return ""
+    m = _SCHEME_RE.match(raw)
+    if m and m.group(1).lower() in NON_WEB_SCHEMES:
+        return ""
     if "://" not in raw:
         raw = "https://" + raw
     try:
@@ -37,7 +49,7 @@ def normalize_url(url: str, strip_tracking: bool = True) -> str:
         return ""
     scheme = parts.scheme.lower()
     host = parts.netloc.lower()
-    if not scheme or not host:
+    if scheme not in ("http", "https") or not host:
         return ""
 
     if ":" in host and host.count(":") == 1:

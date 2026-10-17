@@ -49,7 +49,9 @@ STREET_RE = re.compile(
     r"parkway|park|highway|hwy|suite|ste)\b",
     re.I,
 )
-POSTAL_RE = re.compile(r"\b\d{4,5}(-\d{4})?\b")
+# A postal code only counts next to a label (zip / pin / postcode). A bare 4-6 digit number is just a number
+# (a year, a price, an ID) and used to make almost every page look like it carries an address.
+POSTAL_RE = re.compile(r"\b(?:zip|pin(?:\s*code)?|post(?:al)?\s*code)\b\W{0,3}\d{4,6}\b", re.I)
 
 
 def _iter_schema_objects(blocks: list[str]):
@@ -210,15 +212,22 @@ async def check_local_seo(job_id: str) -> dict:
     address_signals_present = address_pages > 0
     nap_inconsistent = len(nap_keys) > 1
 
-    subscores = {
-        "local_business_schema": 40 if local_homepage else (25 if local_business_schema else 0),
-        "nap": 20 if nap_schema_present else 0,
-        "contact_page": 15 if contact_page_present else 0,
-        "address_signals": 10 if address_signals_present else 0,
-        "geo_signals": 10 if geo_pages else 0,
-        "reviews": 5 if reviews_pages else 0,
+    signals = {
+        "local_business_schema": local_business_schema,
+        "nap": nap_schema_present,
+        "contact_page": contact_page_present,
+        "address_signals": address_signals_present,
+        "geo_signals": bool(geo_pages),
+        "reviews": bool(reviews_pages),
     }
-    score = sum(subscores.values())
+    # Unweighted share of the six local signals that are present (was fixed 40/20/15/10/10/5 points).
+    subscores = {k: (100 if v else 0) for k, v in signals.items()}
+    signals_present = sum(signals.values())
+    signals_total = len(signals)
+    score = round(100 * signals_present / signals_total)
+    # Local SEO only matters for location-based businesses. A contact/about page exists on every site,
+    # so it does not count as evidence of locality.
+    applicable = any(signals[k] for k in ("local_business_schema", "nap", "address_signals", "geo_signals", "reviews"))
 
     checks = [
         {
@@ -257,6 +266,12 @@ async def check_local_seo(job_id: str) -> dict:
             "detail": f"Found on {reviews_pages} page(s).",
         },
     ]
+    if not applicable:
+        checks.insert(0, {
+            "passed": True,
+            "label": "No local-business signals detected",
+            "detail": "No local schema, NAP, address, geo or review markup was found. Ignore this section unless the business serves a physical location.",
+        })
     if nap_inconsistent:
         checks.insert(1, {
             "passed": False,
@@ -268,6 +283,10 @@ async def check_local_seo(job_id: str) -> dict:
         "job_id": job_id,
         "score": score,
         "subscores": subscores,
+        "signals_present": signals_present,
+        "signals_total": signals_total,
+        "applicable": applicable,
+        "score_basis": "share of 6 local signals present (unweighted); not applicable unless the business is location-based",
         "checks": checks,
         "local_business_schema": local_business_schema,
         "local_business_on_homepage": local_homepage,

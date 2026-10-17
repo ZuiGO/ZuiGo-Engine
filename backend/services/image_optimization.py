@@ -153,12 +153,16 @@ async def audit_image_optimization(job_id: str) -> dict:
     dim_share = dims_missing / total if total_imgs else 0
     alt_share = alt_missing / total if total_imgs else 0
 
+    # Each component is the measured share (0-100) of unique images that satisfy it. With no images
+    # there is nothing to measure: no score (it used to award 40 free points for having no images).
     subscores = {
-        "modern_formats": 40 if modern_share >= 0.7 else 20 if modern_share > 0 else 15 if total_imgs else 40,
-        "lazy_loading": 30 if lazy_share >= 0.5 else 10 if lazy_imgs else 0,
-        "dimensions": 30 if dim_share <= 0.3 else 0,
+        "modern_formats": round(100 * modern_share) if total_imgs else None,
+        "lazy_loading": round(100 * lazy_share) if total_imgs else None,
+        "dimensions": round(100 * (1 - dim_share)) if total_imgs else None,
+        "alt_text": round(100 * (1 - alt_share)) if total_imgs else None,
     }
-    score = sum(subscores.values())
+    _measured = [v for v in subscores.values() if v is not None]
+    score = round(sum(_measured) / len(_measured)) if _measured else None
 
     checks = [
         {
@@ -192,6 +196,7 @@ async def audit_image_optimization(job_id: str) -> dict:
         "job_id": job_id,
         "score": score,
         "subscores": subscores,
+        "score_basis": "unweighted mean of the measured image shares in subscores (each 0-100)",
         "checks": checks,
         "total_images": total_imgs,
         "image_occurrences": occurrences,

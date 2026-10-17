@@ -78,7 +78,7 @@ def detect_content_types(page_url: str, html: str) -> list[dict]:
         src = img.get("src") or img.get("data-src") or img.get("data-lazy-src") or ""
         full = joined(src)
         if full:
-            add("image", full, alt=img.get("alt", ""), tag="img",
+            add("image", full, alt=img.get("alt"), tag="img",
                 width=img.get("width"), height=img.get("height"))
 
     # Picture sources (skip video <source> children — handled below)
@@ -95,7 +95,7 @@ def detect_content_types(page_url: str, html: str) -> list[dict]:
             first_url = srcset.split(",")[0].strip().split(" ")[0]
             full = joined(first_url)
             if full:
-                add("image", full, tag="source", alt="")
+                add("image", full, tag="source", alt=None)
 
     # Links to files / embeds
     for a in soup.find_all("a", href=True):

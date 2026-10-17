@@ -77,7 +77,7 @@ async def get_comparison_data() -> dict:
     })
     
     # 3. Calculate SEO Score Delta
-    # Deduct points if missing: title (15), meta_description (15), alt_text (10), h1 (10), robots (15), llms (15)
+    # On-page score = share of the on-page checklist that passes (see single_page_service.onpage_checks)
     from backend.services.single_page_service import evaluate_onpage_score
     def calculate_score(fields: list[dict], use_old: bool) -> int:
         field_vals = {}
@@ -121,7 +121,7 @@ async def get_comparison_data() -> dict:
         
     # 5. Fetch Real Web Vitals
     baseline_url = baseline.get("url")
-    old_vitals = 56 # Fallback
+    old_vitals = None  # unmeasured unless PageSpeed returns a real value; never a made-up fallback
     try:
         if baseline_url:
             from backend.services.performance_service import fetch_page_performance
@@ -136,7 +136,7 @@ async def get_comparison_data() -> dict:
     except Exception as e:
         logger.warning("Failed to fetch real web vitals for %s: %s", baseline_url, e)
 
-    new_vitals = min(100, old_vitals + 12) if old_vitals < 90 else old_vitals
+    # The sandbox copy cannot be measured by PageSpeed, so no 'after' value is invented.
 
     return {
         "baseline_screenshot": baseline_img,
@@ -149,8 +149,9 @@ async def get_comparison_data() -> dict:
         },
         "web_vitals": {
             "old": old_vitals,
-            "new": new_vitals,
-            "delta": new_vitals - old_vitals
+            "new": None,
+            "delta": None,
+            "note": "Measured for the live page only; the sandbox copy cannot be measured.",
         },
         "raw_history": raw_history
     }

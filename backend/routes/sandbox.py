@@ -161,10 +161,10 @@ async def apply_suggestion(id: str):
     
     update_data = {"status": new_status}
     if success:
-        update_data["last_commit_hash"] = "github_pr" # Placeholder
+        update_data["applied_via"] = "github_pr"  # no commit hash exists yet; do not invent one
         
     await db.sandbox_suggestions.update_one({"id": id}, {"$set": update_data})
-    await _log_audit(id, doc.get("field_type", ""), old_status, new_status, commit_hash="github_pr" if success else None, diff="", preview_url=preview_url)
+    await _log_audit(id, doc.get("field_type", ""), old_status, new_status, commit_hash=None, diff="", preview_url=preview_url)
     
     if not success:
         raise HTTPException(status_code=500, detail=f"Apply failed: {msg}")

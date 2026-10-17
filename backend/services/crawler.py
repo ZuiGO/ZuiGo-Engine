@@ -13,6 +13,8 @@ from backend.config import settings
 from backend.db.mongo import get_db
 from backend.logging_setup import get_logger
 from backend.services.content_classifier import detect_content_types
+from backend.services.indexability import parse_indexability
+from backend.services.structured_data import detect_structured_data
 from backend.services.content_downloader import download_content, probe_content
 from backend.services.seo_analyzer import analyze_content_item
 from backend.services.page_classifier import classify_page_type, page_role
@@ -61,6 +63,25 @@ async def _goto_polite(page, url: str, gate: asyncio.Lock, delay: float, timeout
         await asyncio.sleep(min(15, 2 * delay + 2))
         resp = await page.goto(url, wait_until="domcontentloaded", timeout=timeout)
     return resp
+
+
+def _main_content_word_count(soup) -> int:
+    """Words of the page's main content.
+
+    Uses <main>/<article>/[role=main] when present, otherwise the body minus site chrome
+    (nav, footer, aside, and header outside an article). Script/style/template text is
+    never counted. Boilerplate repeated on every page must not make a thin page look rich.
+    """
+    import copy as _copy
+
+    root = soup.find("main") or soup.find(attrs={"role": "main"}) or soup.find("article") or soup.body or soup
+    root = _copy.copy(root)  # never mutate the caller's soup: links/images/headings are read from it afterwards
+    for tag in root.find_all(["script", "style", "noscript", "template", "nav", "footer", "aside"]):
+        tag.decompose()
+    for hdr in root.find_all("header"):
+        if hdr.find_parent(["article", "main"]) is None:
+            hdr.decompose()
+    return len(root.get_text(separator=" ", strip=True).split())
 
 
 async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None, concurrency: int | None = None, seed_sitemap: bool = False, unlimited: bool = False, mobile: bool = True, use_playwright: bool = True, http_username: str | None = None, http_password: str | None = None):
@@ -210,22 +231,22 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
                     failed_urls.add(url)
                     return None
 
-                def _parse_html(html_text: str, current_url: str):
+                def _parse_html(html_text: str, current_url: str, response_headers=None):
                     soup = BeautifulSoup(html_text, "lxml")
                     
                     html_tag = soup.find("html")
                     if html_tag and html_tag.has_attr("lang"):
-                        lang = html_tag["lang"].lower()
-                        # Strict rule: only allow English locales (en, en-US, en-GB, etc.)
-                        if not lang.startswith("en"):
+                        lang = html_tag["lang"].strip().lower()
+                        # Opt-in filter (settings.crawl_english_only); by default every language is crawled.
+                        if settings.crawl_english_only and not lang.startswith("en"):
                             return {"is_non_english": True}
 
                     title_tag = soup.find("title")
                     title = title_tag.get_text(strip=True) if title_tag else ""
-                    meta_desc = soup.find("meta", attrs={"name": "description"})
-                    meta_description = meta_desc.get("content", "") if meta_desc else ""
-                    body_text = soup.get_text(separator=" ", strip=True)
-                    word_count = len(body_text.split())
+                    metas = [(m.get("name") or "", m.get("content") or "") for m in soup.find_all("meta") if m.get("name")]
+                    meta_description = next((c for n, c in metas if n.strip().lower() == "description"), "")
+                    total_words = len(soup.get_text(separator=" ", strip=True).split())
+                    word_count = _main_content_word_count(soup)
                     h1_count = len(soup.find_all("h1"))
 
                     images = soup.find_all("img")
@@ -236,6 +257,8 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
                     external_urls = []
                     for a_tag in soup.find_all("a", href=True):
                         href = a_tag["href"].strip()
+                        if not href or href.startswith("#"):
+                            continue  # same-page anchor, not a link to crawl
                         full_url = urljoin(current_url, href)
                         norm = normalize_url(full_url)
                         if not norm:
@@ -255,11 +278,10 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
                         elif full_parsed.netloc and parsed_netloc != base_netloc:
                             external_urls.append(norm)
 
-                    has_structured_data = bool(soup.find("script", type="application/ld+json"))
-                    noindex = False
-                    robots_meta = soup.find("meta", attrs={"name": "robots"})
-                    if robots_meta:
-                        noindex = "noindex" in robots_meta.get("content", "").lower()
+                    sd = detect_structured_data(soup)
+                    has_structured_data = bool(sd["formats"])
+                    idx = parse_indexability(metas, response_headers)
+                    noindex = idx["noindex"]
 
                     page_type = classify_page_type(current_url, soup, title, meta_description)
                     items = detect_content_types(current_url, html_text)
@@ -267,12 +289,16 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
                         "title": title, "meta_description": meta_description, "word_count": word_count,
                         "h1_count": h1_count, "image_count": image_count, "images_missing_alt": images_missing_alt,
                         "internal_urls": internal_urls, "external_urls": external_urls, "has_structured_data": has_structured_data,
-                        "noindex": noindex, "page_type": page_type, "items": items
+                        "noindex": noindex, "noindex_sources": idx["sources"], "nofollow": idx["nofollow"],
+                        "lang": (html_tag["lang"].strip().lower() if html_tag and html_tag.get("lang") else None),
+                        "structured_data_formats": sd["formats"], "total_word_count": total_words,
+                        "page_type": page_type, "items": items
                     }
 
-                parsed_data = await asyncio.to_thread(_parse_html, html, url)
+                parsed_data = await asyncio.to_thread(_parse_html, html, url, headers)
                 if parsed_data.get("is_non_english"):
-                    logger.info("Skipped non-English page: %s", url)
+                    logger.info("Skipped non-English page (crawl_english_only): %s", url)
+                    await db.analysis_jobs.update_one({"_id": job_id}, {"$inc": {"pages_skipped_language": 1}})
                     return None
 
                 title = parsed_data["title"]
@@ -368,7 +394,13 @@ async def crawl_site(job_id: str, target_url: str, max_pages: int | None = None,
                     "internal_links": len(internal_urls),
                     "external_links": len(external_urls),
                     "has_structured_data": has_structured_data,
+                    "structured_data_formats": parsed_data["structured_data_formats"],
                     "is_indexable": not noindex,
+                    "noindex_sources": parsed_data["noindex_sources"],
+                    "nofollow": parsed_data["nofollow"],
+                    "lang": parsed_data["lang"],
+                    "total_word_count": parsed_data["total_word_count"],
+                    "is_error_page": bool(status_code and status_code >= 400),
                     "content_types": list(downloaded_types),
                     "last_modified": last_modified,
                     "internal_link_urls": internal_urls,

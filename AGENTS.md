@@ -40,6 +40,20 @@ allow-list. Runs are executed by `build_agent_for_run()` (API and arq worker).
    query strings (API keys travel there); `logging_setup` redacts as a backstop.
 6. Keep this file honest: when you delete or add a subsystem, edit the section
    above in the same commit.
+7. Results must come from measurements. Never default a missing measurement to a
+   "good" value (e.g. `score = 100`, `.get("score", 100)`): use `None`, exclude it
+   from roll-ups and show "not measured". No hand-written confidence numbers;
+   findings carry `basis` (measured | rule | heuristic) via `seo_rules.basis_for`.
+8. Judgement thresholds (title length, thin-content words, click depth, ...) live in
+   `services/seo_rules.py` and every finding states the numbers it used in `evidence`.
+   Do not scatter new magic numbers through services.
+9. Accuracy is tested against ground truth: `backend/tests/golden/` crawls a local
+   site whose true facts are known. When you find an accuracy bug, add the failing
+   case to `golden/site.py` and an assertion first, then fix the code.
+10. Every audit score is now a measured rate (unweighted mean of measured components) or None.
+    Scores that only apply to some sites carry `applicable` (local_seo, programmatic_seo,
+    international_seo) - "not applicable" is not a failing grade. `test_no_fabricated_results.py`
+    fails if a missing score defaults to 100 or an invented "after" value reappears.
 
 ## Project
 SEO analysis engine: crawl a site, classify content, analyze, recommend,

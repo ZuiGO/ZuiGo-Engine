@@ -15,10 +15,30 @@ User-agent: PerplexityBot
 Disallow: /
 """
         r = check_robots_text(robots)
+        # PerplexityBot is an answer-engine crawler -> partial; GPTBot (training) is reported but not scored.
+        assert r["status"] == "partial"
+        assert r["score"] == round(100 * 5 / 6)
+        assert "GPTBot" in r["blocked_ai_crawlers"]
+        assert "PerplexityBot" in r["blocked_answer_engine_crawlers"]
+        assert "GPTBot" in r["blocked_training_crawlers"]
+
+    def test_training_block_does_not_lower_score(self):
+        r = check_robots_text("User-agent: GPTBot\nDisallow: /\n")
+        assert r["status"] == "allowed"
+        assert r["score"] == 100
+        assert r["blocked_ai_crawlers"] == ["GPTBot"]
+
+    def test_wildcard_block_blocks_everyone(self):
+        r = check_robots_text("User-agent: *\nDisallow: /\n")
         assert r["status"] == "blocked"
         assert r["score"] == 0
-        assert "GPTBot" in r["blocked_ai_crawlers"]
-        assert "PerplexityBot" in r["blocked_ai_crawlers"]
+        assert set(r["blocked_ai_crawlers"]) == set(r["ai_agents_scanned"])
+
+    def test_path_specific_disallow_is_not_a_block(self):
+        r = check_robots_text("User-agent: GPTBot\nDisallow: /private/\n")
+        assert r["blocked_ai_crawlers"] == []
+        gpt = next(a for a in r["agents"] if a["agent"] == "GPTBot")
+        assert gpt["restricted_paths"] == ["/private/"]
 
     def test_allowed_ai_bots(self):
         robots = """User-agent: *
@@ -34,7 +54,7 @@ Allow: /
     def test_no_rules_defaults_to_allowed(self):
         r = check_robots_text("# empty ruleset\nUser-agent: *\n")
         assert r["status"] == "allowed-by-default"
-        assert r["score"] == 80
+        assert r["score"] == 100  # measured: every answer-engine crawler may fetch "/"
 
     def test_empty_robots(self):
         r = check_robots_text("")

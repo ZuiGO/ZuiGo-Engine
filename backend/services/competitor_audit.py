@@ -345,6 +345,8 @@ async def _se_rich_gap(target_domain: str, comp_domain: str, target_job_id: str)
         "shared": shared[:50],
         "missing_from_target": missing[:50],
         "unique_target": unique_t[:50],
+        "missing_count": len(missing),
+        "shared_count": len(shared),
         "missing_detail": missing_detail[:30],
         "shared_detail": shared_detail[:30],
         "top_opportunities": missing_detail[:20],
@@ -412,40 +414,24 @@ def _estimate_traffic_value(overview: dict, ranked_keywords: list[dict]) -> floa
 
 
 def _opportunity_score(se_rich: dict) -> int | None:
-    """0-100 upside estimate of closing the gap on this competitor.
+    """Keyword-gap share: % of the competitor's analysed keywords that the target does not rank for.
 
-    Weights: keyword opportunity 0.4, traffic delta 0.3, backlink delta 0.3.
-    Returns None when no comparable metrics landed (best-effort data missing).
+    Purely a measured ratio (missing / (missing + shared)). It replaces a composite that mixed three
+    metrics with hand-picked weights (0.4/0.3/0.3) and saturation points (20 keywords, +400% traffic,
+    200 domains). Traffic and referring-domain deltas are reported on their own, as the numbers they are.
+    None when no keyword comparison exists.
     """
     ka = se_rich.get("keyword_analysis") or {}
-    ta = se_rich.get("traffic_analysis") or {}
-    ba = se_rich.get("backlink_analysis") or {}
-    score = 0.0
-    weight = 0.0
-
-    missing = len(ka.get("missing_detail") or [])
-    shared = len(ka.get("shared_detail") or [])
-    if missing or shared:
-        opp = min(missing, 20) / 20.0
-        score += 0.4 * opp
-        weight += 0.4
-
-    c_t = ta.get("competitor_traffic")
-    t_t = ta.get("target_traffic")
-    if isinstance(c_t, (int, float)) and isinstance(t_t, (int, float)) and t_t > 0:
-        growth = (c_t - t_t) / t_t
-        if growth > 0:
-            score += 0.3 * min(growth, 4.0)
-            weight += 0.3
-
-    c_rd = ba.get("referring_domains_delta")
-    if isinstance(c_rd, (int, float)):
-        score += 0.3 * (min(c_rd / 200.0, 1.0) if c_rd > 0 else 0.0)
-        weight += 0.3
-
-    if weight <= 0:
+    missing = ka.get("missing_count")
+    shared = ka.get("shared_count")
+    if missing is None:
+        missing = len(ka.get("missing_detail") or [])  # older stored results (lists capped at 30)
+    if shared is None:
+        shared = len(ka.get("shared_detail") or [])
+    total = missing + shared
+    if not total:
         return None
-    return round(min(score / weight, 1.0) * 100)
+    return round(100 * missing / total)
 
 
 def _build_recommendations(se_rich: dict) -> list[dict]:

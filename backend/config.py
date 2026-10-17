@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     crawl_robots_delay_max: float = 5.0
     mobile_crawl_concurrency: int = 5
     download_concurrency: int = 50
+    # Off by default: every language is crawled and analysed. When on, pages whose <html lang>
+    # is not English are skipped, and the skip is counted on the job (pages_skipped_language).
+    crawl_english_only: bool = False
     psi_concurrency: int = 5
     extract_workers: int = 4
     competitor_psi_all_pages: bool = False

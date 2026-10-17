@@ -151,13 +151,17 @@ async def check_international_seo(job_id: str, target_url: str) -> dict:
         for code in d["alternates"]:
             if code != "x-default":
                 locales.add(code)
+    localized_urls = set()  # pages that sit in a locale (path/param) or declare hreflang alternates
     for url in page_data:
         loc = _locale_of_path(urlparse(url).path)
         if loc:
             locales.add(loc)
+            localized_urls.add(url)
         for pname in LOCALE_PARAM_NAMES:
             if pname + "=" in (urlparse(url).query or ""):
                 locales.add(pname)
+                localized_urls.add(url)
+    localized_urls |= {u for u, d in page_data.items() if d["alternates"]}
 
     multilingual = len(locales) >= 2
     applicable = multilingual or pages_with_hreflang > 0
@@ -165,6 +169,9 @@ async def check_international_seo(job_id: str, target_url: str) -> dict:
     missing_self_ref = 0
     missing_xdefault = 0
     invalid_codes = 0
+    codes_checked = 0
+    pairs_checked = 0
+    locale_bad = set()  # pages whose URL does not expose the locale, or uses a language parameter
     one_way_pairs = []
     canonical_conflicts = []
     locale_hidden = []
@@ -186,6 +193,7 @@ async def check_international_seo(job_id: str, target_url: str) -> dict:
         if "x-default" not in alts:
             missing_xdefault += 1
         for code in alts:
+            codes_checked += 1
             if not is_valid_hreflang_code(code):
                 invalid_codes += 1
         if not d["html_lang"] and not d["content_lang"]:
@@ -201,6 +209,7 @@ async def check_international_seo(job_id: str, target_url: str) -> dict:
             back = norm_by_url.get(tnorm)
             if back is None:
                 continue
+            pairs_checked += 1
             back_alts = page_data[back]["alternates"]
             if not back_alts or norm not in {normalize_url(h) for h in back_alts.values()}:
                 one_way_pairs.append(f"{code}: {url} -> {back}")
@@ -212,8 +221,10 @@ async def check_international_seo(job_id: str, target_url: str) -> dict:
             )
             if not has_locale and len(locales) >= 2:
                 locale_hidden.append(url)
+                locale_bad.add(url)
         if any(pn + "=" in (urlparse(url).query or "") for pn in LOCALE_PARAM_NAMES):
             lang_param_pages += 1
+            locale_bad.add(url)
 
     sitemap_doc = await db.sitemap_audits.find_one({"job_id": job_id})
     sitemap_stats = {
@@ -223,15 +234,22 @@ async def check_international_seo(job_id: str, target_url: str) -> dict:
         "invalid_alt_codes": (sitemap_doc or {}).get("sitemap_invalid_alt_codes", 0),
     }
 
-    total_hreflang = max(pages_with_hreflang, 1)
+    def _rate(bad, total):
+        """Share (0-100) of items that are fine; None when there was nothing to evaluate."""
+        return None if not total else round(100 * (1 - min(bad, total) / total))
+
+    # Each component is a measured rate with its own denominator (it used to be all-or-nothing:
+    # one bad page out of a thousand zeroed a 15-30 point bucket).
     subscores = {
-        "self_reference": 30 if missing_self_ref == 0 else 0,
-        "x_default": 15 if missing_xdefault == 0 else 0,
-        "valid_codes": 15 if invalid_codes == 0 else 0,
-        "reciprocal": 25 if not one_way_pairs else 0,
-        "locale_urls": 15 if (not locale_hidden and lang_param_pages == 0) else 0,
+        "hreflang_coverage": round(100 * pages_with_hreflang / len(localized_urls)) if localized_urls else None,
+        "self_reference": _rate(missing_self_ref, pages_with_hreflang),
+        "x_default": _rate(missing_xdefault, pages_with_hreflang),
+        "valid_codes": _rate(invalid_codes, codes_checked),
+        "reciprocal": _rate(len(one_way_pairs), pairs_checked),
+        "locale_urls": _rate(len(locale_bad), pages_with_hreflang),
     }
-    score = sum(subscores.values()) if applicable else None
+    _measured = [v for v in subscores.values() if v is not None]
+    score = round(sum(_measured) / len(_measured)) if applicable and _measured else None
 
     checks = []
     if not applicable:
@@ -308,6 +326,7 @@ async def check_international_seo(job_id: str, target_url: str) -> dict:
         "locales": sorted(locales),
         "score": score,
         "subscores": subscores,
+        "score_basis": "unweighted mean of the measured rates in subscores; null when the site is monolingual",
         "checks": checks,
         "pages_with_hreflang": pages_with_hreflang,
         "pages_total": len(page_data),

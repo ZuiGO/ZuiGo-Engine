@@ -11,7 +11,7 @@ from backend.services.performance_service import (
     _classify_source,
     _cwv_score,
     GOOD,
-    CWV_WEIGHTS,
+    CWV_METRICS,
 )
 
 
@@ -140,11 +140,11 @@ class TestHealthNoFabrication:
 
 class TestCwvSourceLabels:
     def test_classify_all_field(self):
-        cwv = {k: 100 for k in CWV_WEIGHTS}
-        assert _classify_source({k: 100 for k in CWV_WEIGHTS}, cwv) == "field"
+        cwv = {k: 100 for k in CWV_METRICS}
+        assert _classify_source({k: 100 for k in CWV_METRICS}, cwv) == "field"
 
     def test_classify_all_lab(self):
-        cwv = {k: 100 for k in CWV_WEIGHTS}
+        cwv = {k: 100 for k in CWV_METRICS}
         assert _classify_source({}, cwv) == "lab"
 
     def test_classify_mixed(self):
@@ -156,7 +156,7 @@ class TestCwvSourceLabels:
         cwv = {"lcp": 1000, "inp": 150, "cls": None}
         assert _classify_source({"lcp": 1000}, cwv) == "partial"
 
-    def test_cwv_score_uses_weights(self):
+    def test_cwv_score_is_share_of_good_metrics(self):
         good = GOOD
         cwv = {"lcp": good["lcp"], "inp": good["inp"], "cls": good["cls"]}
         assert _cwv_score(cwv) == 100

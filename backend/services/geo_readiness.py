@@ -1,86 +1,81 @@
-"""GEO (Generative Engine Optimization) readiness check.
+"""AI-crawler access check (the "GEO readiness" signal).
 
-Fetches robots.txt and checks which AI crawlers can access the site:
-GPTBot, PerplexityBot, ClaudeBot, anthropic-ai, Google-Extended, CCBot, Bytespider.
+Fetches robots.txt and evaluates, per RFC 9309, whether each known AI crawler
+may fetch the homepage. This measures *crawl access only*. It says nothing about
+whether any AI engine actually cites the site.
 
-Framed as "improves visibility in ChatGPT/Perplexity and other AI search",
-NOT as a requirement for Google AI Overviews.
+Score = share of *answer-engine* crawlers (purpose "search"/"user") that are
+allowed to fetch "/". Training-only crawlers are reported separately: blocking
+them is a policy choice, not a defect, so they do not lower the score.
 """
 
 import httpx
 
 from backend.logging_setup import get_logger
+from backend.services.robots_rules import AI_CRAWLERS, ANSWER_ENGINE_PURPOSES, parse_robots
 
 logger = get_logger("geo")
 
-AI_AGENTS = [
-    ("GPTBot", "OpenAI / ChatGPT"),
-    ("PerplexityBot", "Perplexity"),
-    ("ClaudeBot", "Anthropic / Claude"),
-    ("anthropic-ai", "Anthropic / Claude"),
-    ("Google-Extended", "Google (AI features)"),
-    ("CCBot", "Common Crawl / AI training"),
-    ("Bytespider", "ByteDance"),
-]
+# Kept for backwards compatibility with callers that import it.
+AI_AGENTS = [(name, org) for name, org, _ in AI_CRAWLERS]
 
 USER_AGENT = "ZuiGO-EngineBot/1.0 (+https://zuigo.ai)"
 
-
-def _parse_robots(text: str) -> dict:
-    """Parse robots.txt and return which AI agents are allowed or blocked."""
-    blocked_agents = []
-    allowed_agents = []
-    no_rules = True
-    current_agent = None
-    for raw in text.splitlines():
-        line = raw.strip().lower()
-        if not line or line.startswith("#"):
-            continue
-        if line.startswith("user-agent"):
-            current_agent = line.split(":", 1)[1].strip().split()[0] if ":" in line else ""
-            continue
-        if line.startswith("allow") or line.startswith("disallow"):
-            if not current_agent:
-                continue
-            no_rules = False
-            if line.startswith("disallow") and line.split(":", 1)[1].strip():
-                blocked_agents.append(current_agent)
-            else:
-                allowed_agents.append(current_agent)
-    blocked = [name for name, _ in AI_AGENTS if name.lower() in blocked_agents]
-    allowed = [name for name, _ in AI_AGENTS if name.lower() in allowed_agents and name not in blocked]
-    return {"blocked": blocked, "allowed": allowed, "no_rules": no_rules}
+BASIS = "robots.txt rules evaluated per RFC 9309 for the homepage path"
+NOTE = (
+    "Crawl access only: allowing an AI crawler is necessary for it to read the site "
+    "but does not mean the site is cited. Not required for Google AI Overviews or AI Mode."
+)
 
 
 def check_robots_text(text: str) -> dict:
-    parsed = _parse_robots(text)
-    known = [name for name, _ in AI_AGENTS]
-    scanned = [name for name in known if name.lower() in text.lower()]
-    if parsed["blocked"]:
-        score = 0
-        status = "blocked"
-    elif parsed["no_rules"]:
-        score = 80
+    rules = parse_robots(text)
+    agents = []
+    for name, org, purpose in AI_CRAWLERS:
+        d = rules.check(name, "/")
+        agents.append({
+            "agent": name,
+            "org": org,
+            "purpose": purpose,
+            "allowed": d.allowed,
+            "group": d.group,
+            "rule": d.rule,
+            "restricted_paths": d.restricted_patterns[:5],
+        })
+    scored = [a for a in agents if a["purpose"] in ANSWER_ENGINE_PURPOSES]
+    scored_allowed = [a for a in scored if a["allowed"]]
+    blocked_scored = [a for a in scored if not a["allowed"]]
+    blocked = [a["agent"] for a in agents if not a["allowed"]]
+    allowed = [a["agent"] for a in agents if a["allowed"]]
+    # "no rules": no tracked crawler is touched by any Allow/Disallow line.
+    no_rules = all(a["rule"] is None and not a["restricted_paths"] for a in agents)
+
+    if no_rules:
         status = "allowed-by-default"
+    elif not scored_allowed:
+        status = "blocked"
+    elif blocked_scored:
+        status = "partial"
     else:
-        score = 100
         status = "allowed"
+
     return {
         "status": status,
-        "score": score,
+        "score": round(100 * len(scored_allowed) / len(scored)),
         "robots_txt_found": True,
-        "blocked_ai_crawlers": parsed["blocked"],
-        "allowed_ai_crawlers": parsed["allowed"],
-        "ai_agents_scanned": scanned,
-        "note": (
-            "Improves visibility in AI search (ChatGPT, Perplexity, etc.). "
-            "Not required for Google AI Overviews or AI Mode."
-        ),
+        "blocked_ai_crawlers": blocked,
+        "allowed_ai_crawlers": allowed,
+        "blocked_answer_engine_crawlers": [a["agent"] for a in blocked_scored],
+        "blocked_training_crawlers": [a["agent"] for a in agents if not a["allowed"] and a["purpose"] == "training"],
+        "ai_agents_scanned": [a["agent"] for a in agents],
+        "agents": agents,
+        "basis": BASIS,
+        "note": NOTE,
     }
 
 
 async def check_geo_readiness(url: str, timeout: float = 15.0, http_username: str | None = None, http_password: str | None = None) -> dict:
-    """Fetch robots.txt for the site and run the AI-crawler readiness check."""
+    """Fetch robots.txt for the site and run the AI-crawler access check."""
     from urllib.parse import urlparse
 
     parsed = urlparse(url)
@@ -92,7 +87,16 @@ async def check_geo_readiness(url: str, timeout: float = 15.0, http_username: st
     except Exception as e:
         logger.warning("GEO robots.txt fetch failed for %s: %s", origin, e)
         return {"status": "unknown", "score": None, "robots_txt_found": False, "error": str(e)[:200]}
-    if resp.status_code >= 400:
+    if 400 <= resp.status_code < 500:
+        # RFC 9309 s2.3.1.3: a missing/unavailable (4xx) robots.txt means no restrictions.
+        result = check_robots_text("")
+        result["status"] = "allowed-by-default"
+        result["robots_txt_found"] = False
+        result["http_status"] = resp.status_code
+        result["robots_txt_url"] = origin + "/robots.txt"
+        return result
+    if resp.status_code >= 500:
+        # Server error: crawlers must assume full disallow temporarily -> we cannot tell.
         return {"status": "unknown", "score": None, "robots_txt_found": False, "http_status": resp.status_code}
     result = check_robots_text(resp.text)
     result["robots_txt_url"] = origin + "/robots.txt"
