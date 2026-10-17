@@ -22,10 +22,16 @@ backend/
   main.py          FastAPI app, CORS, request logging, startup wiring
   config.py        env-driven settings (.env)
   db/              Mongo + Neo4j connections
-  routes/          analysis, pages, content, links, actions, reports, chat, graph, seo-insights, sandbox
+  worker.py        Arq worker (analysis pipeline, agent runs)
+  routes/          analysis, pages, content, links, actions, reports, chat, graph,
+                   seo-insights, sandbox, agent, gsc, competitors, trends, ... (see main.py)
   services/        crawler, content_classifier, content_downloader, seo_analyzer,
                    pdf_extractor, content_extractor, graph_service, vector_service,
-                   chat_service, se_ranking, serp_api, audit_service
+                   chat_service, se_ranking, serp_api, audit_service, gsc,
+                   groq_client (shared single-shot LLM helper)
+    agent_runtime.py / agent_planner.py   autonomous agent loop + LLM planner
+    agent_swarm/   domain agents (crawl, report, ...) = runtime + role prompt + tool allow-list
+    agent_tools/   tool registry the agents can call
   logging_setup.py rotating file logs (logs/app.log) + console
 ```
 
@@ -53,10 +59,10 @@ analysis (fluidcontrols.com 261 pages + zuigo.ai) and a Chroma index, so every
 tab has data before the first crawl.
 
 ```bash
-cd deploy/demo
+# from the repo root
 cp .env.docker.example .env.docker   # paste real API keys (optional, see below)
 docker compose up -d --build         # first run seeds the DB (~1-2 min)
-open http://localhost:8001           # or: DEMO_PORT=8080 docker compose up -d
+open http://localhost:8001
 ```
 
 What happens on first `up`:
@@ -69,7 +75,7 @@ What happens on first `up`:
 Later `up`s are no-ops for the seed services. Full reset:
 `docker compose down -v && docker compose up -d --build`.
 
-Demo keys: paste into `deploy/demo/.env.docker`. Without a `GROQ_API_KEY` chat
+Demo keys: paste into `.env.docker` (never commit it; it is gitignored). Without a `GROQ_API_KEY` chat
 runs simulated; without `GEMINI_API_KEY` new crawls fall back to hash
 embeddings (seeded chat search already works). `SE_RANKING_API_KEY` / `SERP_API_KEY`
 power the SEO Insights tab for new analyses.
@@ -79,15 +85,20 @@ sites). Don't distribute the image or the `seed/` folder outside your machine.
 
 ## Environment Variables
 
-See `.env.example`:
+See `.env.example` (copy to `.env`; `.env.docker.example` is the Docker equivalent). Keys are never logged: HTTP request URLs are not logged and secrets in query strings are redacted.
 
 | Variable | Purpose |
 |---|---|
 | `MONGODB_URI` | MongoDB connection string |
 | `REDIS_URL` | Redis URL |
 | `NEO4J_URI` / `NEO4J_USER` / `NEO4J_PASSWORD` | Neo4j graph database |
-| `GROQ_API_KEY` | LLM for RAG chat |
+| `GROQ_API_KEY` / `GROQ_MODEL` | LLM for RAG chat, the agent planner and the analysis stages |
+| `GEMINI_API_KEY` | Embeddings |
 | `SERP_API_KEY` | SerpAPI keyword ranking lookups |
+| `PAGESPEED_API_KEY` | Google PageSpeed Insights |
+| `GSC_CLIENT_ID` / `GSC_CLIENT_SECRET` / `GSC_REDIRECT_URI` / `GSC_REFRESH_TOKEN` | Google Search Console OAuth |
+| `GSC_SERVICE_ACCOUNT_FILE` | Alternative: service-account key file for Search Console |
+| `GITHUB_TOKEN` | Opening PRs for approved sandbox suggestions / actions |
 | `SE_RANKING_API_KEY` | SE Ranking insights fallback (backlinks, keywords, domain overview, competitors; configure region in Settings) |
 | `LOG_LEVEL` / `LOG_DIR` | Logging configuration |
 
@@ -103,7 +114,9 @@ See `.env.example`:
 - `GET /api/reports/{job_id}` · `GET /api/reports/{job_id}/download` — JSON + HTML report
 - `POST /api/chat` — RAG chat `{job_id, message}`
 - `GET /api/seo-insights/{job_id}` · `POST /api/seo-insights/refresh/{job_id}` · `POST /api/seo-insights/keyword-search` · `GET /api/seo-insights/{job_id}/suggested-keywords`
-- `GET /api/sandbox/comparison` · `GET /api/sandbox/suggestions` · `POST /api/sandbox/suggestions/{id}/apply` · `POST /api/sandbox/suggestions/{id}/rollback`
+- `GET /api/sandbox/comparison` · `GET /api/sandbox/suggestions` · `POST /api/sandbox/suggestions/{id}/{approve|reject|edit|apply|rollback}` · `GET /api/sandbox/audit` — `apply` opens a GitHub PR (needs `GITHUB_TOKEN`)
+- Agent runs: see `backend/routes/agent.py` (start / approve / stop). Each run executes as its `agent_type` domain agent.
+- `POST /api/actions/{job_id}/apply-sandbox` was removed (returns `410 Gone`); the connector layer it used no longer exists.
 
 ## Logging
 

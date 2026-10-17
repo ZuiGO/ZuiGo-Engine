@@ -15,6 +15,7 @@ build/
 # Crawled content & logs
 downloads/
 logs/
+*.log
 dummy_site/
 
 # Vector store (local Chroma data)
@@ -41,3 +42,6 @@ test-results/
 .env.docker
 seed/
 
+# Stray backups
+*.old
+*.orig

@@ -7,7 +7,7 @@ keyword gaps or existing keyword themes.
 import json
 from backend.db.mongo import get_db
 from backend.logging_setup import get_logger
-from backend.services.agent_planner import _generate_groq
+from backend.services.groq_client import generate_groq
 
 logger = get_logger("content_growth")
 
@@ -58,7 +58,7 @@ JSON:"""
 
     opportunities = []
     try:
-        llm_response = await _generate_groq(prompt, max_tokens=1000, temperature=0.5)
+        llm_response = await generate_groq(prompt, max_tokens=1000, temperature=0.5)
         import re
         json_match = re.search(r"\{.*\}", llm_response, re.DOTALL)
         if json_match:

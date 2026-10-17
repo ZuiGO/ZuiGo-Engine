@@ -38,8 +38,14 @@ async def competitor_audit(ctx, target_job_id: str, competitors: list[str]):
 
 
 async def agent_run(ctx, run_id: str):
-    from backend.services.agent_runtime import AgentRuntime
-    await AgentRuntime().start(run_id)
+    # Dispatch through the swarm so the run uses its domain agent (role prompt +
+    # tool restrictions). A bare AgentRuntime here silently ignored agent_type
+    # whenever the queue was available.
+    from backend.db.mongo import get_db
+    from backend.services.agent_swarm import build_agent_for_run
+
+    run_doc = await get_db().agent_runs.find_one({"id": run_id}) or {}
+    await build_agent_for_run(run_doc).start(run_id)
 
 
 class WorkerSettings:

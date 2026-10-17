@@ -57,15 +57,11 @@ async def create_run(payload: CreateRunRequest):
     await db.agent_runs.insert_one(run_doc)
 
     from backend.services.queue import run_or_fallback
-    from backend.services.agent_swarm import get_agent_for_domain
-
-    agent_cls = get_agent_for_domain(run.agent_type)
-    if not agent_cls:
-        agent_cls = get_agent_for_domain("coordinator") # Fallback to coordinator
+    from backend.services.agent_swarm import build_agent_for_run
 
     await run_or_fallback(
         "agent_run",
-        agent_cls(job_id=run.job_id).start,
+        build_agent_for_run(run_doc).start,
         run.id,
     )
     return {"run_id": run.id, "status": run.status}
@@ -96,7 +92,7 @@ async def get_run(run_id: str):
 
 @router.post("/runs/{run_id}/approve")
 async def approve_run(run_id: str):
-    from backend.services.agent_swarm import get_agent_for_domain
+    from backend.services.agent_swarm import build_agent_for_run
 
     db = get_db()
     doc = await db.agent_runs.find_one({"id": run_id})
@@ -105,11 +101,7 @@ async def approve_run(run_id: str):
     if doc.get("status") != "waiting_approval":
         raise HTTPException(status_code=409, detail="Run is not waiting for approval")
         
-    agent_cls = get_agent_for_domain(doc.get("agent_type", "coordinator"))
-    if not agent_cls:
-        raise HTTPException(status_code=500, detail="Invalid agent type")
-        
-    ok = await agent_cls(job_id=doc.get("job_id")).approve(run_id)
+    ok = await build_agent_for_run(doc).approve(run_id)
     if not ok:
         raise HTTPException(status_code=409, detail="Run is not waiting for approval")
     return {"status": "resumed"}
@@ -117,18 +109,14 @@ async def approve_run(run_id: str):
 
 @router.post("/runs/{run_id}/stop")
 async def stop_run(run_id: str):
-    from backend.services.agent_swarm import get_agent_for_domain
+    from backend.services.agent_swarm import build_agent_for_run
 
     db = get_db()
     doc = await db.agent_runs.find_one({"id": run_id})
     if not doc:
         raise HTTPException(status_code=404, detail="Run not found")
         
-    agent_cls = get_agent_for_domain(doc.get("agent_type", "coordinator"))
-    if not agent_cls:
-        raise HTTPException(status_code=500, detail="Invalid agent type")
-        
-    ok = await agent_cls(job_id=doc.get("job_id")).stop(run_id)
+    ok = await build_agent_for_run(doc).stop(run_id)
     if not ok:
         raise HTTPException(status_code=409, detail="Run is not stoppable")
     return {"status": "stopped"}

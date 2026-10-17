@@ -10,7 +10,7 @@ import json
 from backend.db.mongo import get_db
 from backend.logging_setup import get_logger
 from backend.services.serp_api import search_keyword
-from backend.services.agent_planner import _generate_groq
+from backend.services.groq_client import generate_groq
 
 logger = get_logger("brand_monitor")
 
@@ -65,7 +65,7 @@ JSON:"""
     summary_text = "No clear sentiment detected."
     
     try:
-        llm_response = await _generate_groq(prompt, max_tokens=150, temperature=0.1)
+        llm_response = await generate_groq(prompt, max_tokens=150, temperature=0.1)
         import re
         json_match = re.search(r"\{.*\}", llm_response, re.DOTALL)
         if json_match:

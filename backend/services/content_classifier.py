@@ -59,13 +59,13 @@ def classify_with_magic(file_path: str) -> str | None:
 
 
 def detect_content_types(page_url: str, html: str) -> list[dict]:
+    soup = BeautifulSoup(html, "lxml")
     items = []
-    seen = set()
+    seen: set[str] = set()
 
-    def joined(url):
-        return urljoin(page_url, url.strip()) if url else ""
+    joined = lambda url: urljoin(page_url, url.strip()) if url else ""
 
-    def add(ctype, source_url, **extra):
+    def add(ctype: str, source_url: str, **extra) -> None:
         if not source_url or source_url.lower().startswith("data:"):
             return
         if source_url in seen:
@@ -73,27 +73,33 @@ def detect_content_types(page_url: str, html: str) -> list[dict]:
         seen.add(source_url)
         items.append({"type": ctype, "source_url": source_url, **extra})
 
-    # Images via regex <img ...>
-    img_regex = re.compile(r'<img\s+([^>]+)>', re.IGNORECASE)
-    src_regex = re.compile(r'(?:data-lazy-src|data-src|src)\s*=\s*(["\'])(.*?)\1', re.IGNORECASE)
-    alt_regex = re.compile(r'alt\s*=\s*(["\'])(.*?)\1', re.IGNORECASE)
-    
-    for match in img_regex.finditer(html):
-        attrs = match.group(1)
-        src_match = src_regex.search(attrs)
-        if src_match:
-            src = src_match.group(2)
-            full = joined(src)
-            if full:
-                alt_match = alt_regex.search(attrs)
-                alt_text = alt_match.group(2) if alt_match else ""
-                add("image", full, alt=alt_text, tag="img")
+    # Images
+    for img in soup.find_all("img"):
+        src = img.get("src") or img.get("data-src") or img.get("data-lazy-src") or ""
+        full = joined(src)
+        if full:
+            add("image", full, alt=img.get("alt", ""), tag="img",
+                width=img.get("width"), height=img.get("height"))
 
-    # Links via regex <a href="...">
-    a_regex = re.compile(r'<a\s+[^>]*href\s*=\s*(["\'])(.*?)\1[^>]*>(.*?)</a>', re.IGNORECASE | re.DOTALL)
-    for match in a_regex.finditer(html):
-        href = match.group(2).strip()
-        text = match.group(3)
+    # Picture sources (skip video <source> children — handled below)
+    for source in soup.find_all("source"):
+        picture = next(
+            (a for a in (source.parents if source.parent is not None else iter(()))
+             if getattr(a, "name", "") == "picture"),
+            None,
+        )
+        if picture is None:
+            continue
+        srcset = source.get("srcset", "")
+        if srcset:
+            first_url = srcset.split(",")[0].strip().split(" ")[0]
+            full = joined(first_url)
+            if full:
+                add("image", full, tag="source", alt="")
+
+    # Links to files / embeds
+    for a in soup.find_all("a", href=True):
+        href = a["href"].strip()
         if not href or href.startswith("#") or href.startswith("javascript:"):
             continue
         full = joined(href)
@@ -101,14 +107,11 @@ def detect_content_types(page_url: str, html: str) -> list[dict]:
             continue
         ctype = classify_url(full)
         if ctype:
-            # strip tags from text
-            text_clean = re.sub(r'<[^>]+>', '', text).strip()
-            add(ctype, full, text=text_clean, tag="a")
+            add(ctype, full, text=a.get_text(strip=True), tag="a")
 
-    # iframes via regex
-    iframe_regex = re.compile(r'<iframe\s+[^>]*src\s*=\s*(["\'])(.*?)\1', re.IGNORECASE)
-    for match in iframe_regex.finditer(html):
-        src = match.group(2).strip()
+    # YouTube embeds (iframe src)
+    for iframe in soup.find_all("iframe"):
+        src = iframe.get("src") or ""
         full = joined(src)
         if not full:
             continue
@@ -117,12 +120,23 @@ def detect_content_types(page_url: str, html: str) -> list[dict]:
         is_embed = any(d in domain for d in (*YOUTUBE_DOMAINS, *VIMEO_DOMAINS))
         add("video_embed" if is_embed else "iframe", full, tag="iframe")
 
-    # video tags
-    video_regex = re.compile(r'<(?:video|audio|source)\s+[^>]*src\s*=\s*(["\'])(.*?)\1', re.IGNORECASE)
-    for match in video_regex.finditer(html):
-        src = match.group(2).strip()
+    # Video tags
+    for video in soup.find_all("video"):
+        src = video.get("src") or ""
         full = joined(src)
         if full:
-            add("video", full, tag="media")
+            add("video", full, tag="video")
+        for source in video.find_all("source"):
+            s = source.get("src", "")
+            full = joined(s)
+            if full:
+                add("video", full, tag="source")
+
+    # Object / embed tags
+    for obj in soup.find_all("object"):
+        data = obj.get("data", "")
+        full = joined(data)
+        if full:
+            add("iframe", full, tag="object")
 
     return items

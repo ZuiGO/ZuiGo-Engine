@@ -65,10 +65,12 @@ registry.register(ToolSpec(
 ))
 
 async def _run_single_page_analysis_tool(url: str, job_id: str) -> dict:
-    from backend.services.single_page_service import run_single_page_analysis
+    from backend.services.single_page_service import generate_visual_comparison
     try:
-        await run_single_page_analysis(url, job_id)
-        return {"ok": True, "message": "Single page analysis completed."}
+        comparison = await generate_visual_comparison(job_id, url)
+        # Drop base64 screenshots: far too large for the planner's context.
+        slim = {k: v for k, v in (comparison or {}).items() if k != "visuals"}
+        return _compact({"ok": True, "message": "Single page analysis completed.", "comparison": slim})
     except Exception as e:
         logger.error("run_single_page_analysis_tool error: %s", e)
         return {"ok": False, "error": str(e)}
@@ -235,7 +237,11 @@ registry.register(ToolSpec(
 async def _apply_approved_changes_tool(job_id: str) -> dict:
     from backend.routes.actions import apply_approved_changes
     try:
-        await apply_approved_changes(job_id)
+        result = await apply_approved_changes(job_id)
+        # The route reports expected failures (e.g. no GitHub token) as
+        # {"ok": False, ...}; don't turn those into a fake success for the planner.
+        if isinstance(result, dict):
+            return _compact(result)
         return {"ok": True, "message": "Changes applied successfully."}
     except Exception as e:
         logger.error("apply_approved_changes_tool error: %s", e)
@@ -816,13 +822,17 @@ async def _read_current_state_tool(job_id: str) -> dict:
 
 
 async def _query_knowledge_tool(job_id: str, domain: str, question: str) -> dict:
-    from backend.services.agent_memory import get_domain_facts
-    facts = await get_domain_facts(domain)
-    return {
+    from backend.services.agent_memory import get_facts, recent_episodes
+    facts = await get_facts(domain)
+    episodes = await recent_episodes(domain, limit=3)
+    # record_domain_category() stores crawl/analysis/technical/insights under
+    # the single "domain_facts" key; everything else is a flat fact.
+    return _compact({
         "domain": domain,
-        "facts_summary": facts.get("insights", {}),
-        "recent_episodes": facts.get("episodes", [])[-3:]
-    }
+        "facts_summary": facts.get("domain_facts", {}),
+        "other_facts": {k: v for k, v in facts.items() if k != "domain_facts"},
+        "recent_episodes": episodes,
+    })
 
 
 FIELD_MAP = {
@@ -836,7 +846,7 @@ FIELD_MAP = {
 }
 
 
-TOOL_REGISTRY: dict[str, dict] = {
+_LEGACY_TOOL_DEFS: dict[str, dict] = {
     "crawl_urls": {
         "name": "crawl_urls",
         "description": "Crawl a list of URLs (single-page scope: exactly one URL, max_pages=1). Returns crawl summary and per-page SEO facts.",
@@ -921,7 +931,7 @@ TOOL_REGISTRY: dict[str, dict] = {
 }
 
 
-for name, tool_dict in TOOL_REGISTRY.items():
+for name, tool_dict in _LEGACY_TOOL_DEFS.items():
     registry.register(ToolSpec(
         name=tool_dict["name"],
         description=tool_dict["description"],

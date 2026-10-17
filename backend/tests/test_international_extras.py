@@ -25,6 +25,14 @@ class FakeCollection:
     def find(self, q, projection=None):
         return self
 
+    def __aiter__(self):
+        # Production code streams pages with `async for p in db.pages.find(...)`
+        # (Motor cursors support this), so the fake must too.
+        async def _gen():
+            for x in list(self._store.values()):
+                yield dict(x)
+        return _gen()
+
     async def to_list(self, length=None):
         items = list(self._store.values())
         return [dict(x) for x in items][:length] if length is not None else [dict(x) for x in items]

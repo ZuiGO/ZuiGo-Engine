@@ -87,6 +87,7 @@ You should use the run_full_analysis tool to run the complete 12-wave pipeline o
 __all__ = [
     "BaseAgent",
     "get_agent_for_domain",
+    "build_agent_for_run",
 ]
 
 def get_agent_for_domain(domain: str):
@@ -95,3 +96,14 @@ def get_agent_for_domain(domain: str):
     if not config:
         return None
     return functools.partial(BaseAgent, allowed_tools=config["allowed_tools"], system_prompt=config["system_prompt"])
+
+
+def build_agent_for_run(run_doc: dict):
+    """Instantiate the agent matching a stored run's ``agent_type``.
+
+    Unknown/missing types fall back to the coordinator. Used by the API routes
+    and the arq worker so a run is always executed by the same kind of agent
+    regardless of how it was dispatched.
+    """
+    factory = get_agent_for_domain(run_doc.get("agent_type") or "coordinator") or get_agent_for_domain("coordinator")
+    return factory(job_id=run_doc.get("job_id"))

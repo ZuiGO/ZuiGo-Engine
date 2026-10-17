@@ -215,3 +215,15 @@ class TestBatchReject:
         with pytest.raises(HTTPException) as exc:
             run(actions_module.batch_update_actions("job1", actions_module.BatchRequest(status="bogus")))
         assert exc.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_apply_sandbox_endpoint_is_gone_not_a_500():
+    """The connectors package was deleted; the route must fail cleanly (410)."""
+    from fastapi import HTTPException
+
+    from backend.routes.actions import apply_sandbox_changes
+
+    with pytest.raises(HTTPException) as exc:
+        await apply_sandbox_changes("job-1")
+    assert exc.value.status_code == 410

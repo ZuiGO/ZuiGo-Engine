@@ -19,6 +19,9 @@ _window_start = 0.0
 
 async def acquire_token_budget(est_tokens: int = EST_TOKENS_PER_CALL) -> None:
     global _used, _window_start
+    # A request larger than the whole window budget could never fit and the
+    # wait loop below would spin forever; cap it at the budget instead.
+    est_tokens = min(est_tokens, TOKEN_BUDGET)
     async with _lock:
         now = time.time()
         if now - _window_start >= TOKEN_WINDOW:
